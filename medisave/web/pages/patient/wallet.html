@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wallet | MediSave</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    .tab-active{@apply border-b-2 border-primary text-primary font-semibold;}
+    .tx-icon-deposit{@apply w-8 h-8 bg-green-50 rounded-full flex items-center justify-center shrink-0;}
+    .tx-icon-withdrawal{@apply w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shrink-0;}
+    .tx-icon-savings{@apply w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center shrink-0;}
+    .tx-icon-payment{@apply w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center shrink-0;}
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="walletApp()" x-init="init()">
+
+<div class="max-w-2xl mx-auto px-4 py-6 pb-28">
+
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-6">
+    <a href="/patient/dashboard" class="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:text-primary transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </a>
+    <h1 class="text-xl font-bold text-gray-900">Wallet</h1>
+  </div>
+
+  <!-- Balance card -->
+  <div class="bg-gradient-to-br from-primary to-secondary rounded-2xl p-6 text-white mb-6 relative overflow-hidden">
+    <div class="absolute right-0 top-0 w-40 h-40 bg-white/5 rounded-full -translate-y-10 translate-x-10"></div>
+    <div class="absolute right-12 bottom-0 w-24 h-24 bg-white/5 rounded-full translate-y-8"></div>
+    <div class="relative">
+      <p class="text-green-100 text-sm mb-1">Available Balance</p>
+      <template x-if="loading"><div class="h-9 w-40 bg-white/20 rounded-lg animate-pulse"></div></template>
+      <template x-if="!loading">
+        <p class="text-4xl font-bold" x-text="'₦' + fmt(wallet?.balance || 0)"></p>
+      </template>
+      <div class="flex items-center gap-4 mt-4">
+        <div>
+          <p class="text-xs text-green-200">Currency</p>
+          <p class="text-sm font-semibold" x-text="wallet?.currency || 'NGN'"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="grid grid-cols-2 gap-3 mb-6">
+    <button @click="showDepositModal = true"
+      class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-md transition group">
+      <div class="w-10 h-10 bg-accent rounded-xl flex items-center justify-center group-hover:bg-primary transition-colors">
+        <svg class="w-5 h-5 text-primary group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      </div>
+      <div class="text-left">
+        <p class="text-sm font-semibold text-gray-900">Add Money</p>
+        <p class="text-xs text-gray-400">via Paystack</p>
+      </div>
+    </button>
+    <button @click="showWithdrawModal = true"
+      class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition group">
+      <div class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center group-hover:bg-red-500 transition-colors">
+        <svg class="w-5 h-5 text-red-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4m8 8l-8-8 8-8"/></svg>
+      </div>
+      <div class="text-left">
+        <p class="text-sm font-semibold text-gray-900">Withdraw</p>
+        <p class="text-xs text-gray-400">to bank account</p>
+      </div>
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex border-b border-gray-100 mb-4">
+    <button @click="activeTab='transactions'" :class="activeTab==='transactions' ? 'tab-active' : 'text-gray-400'" class="px-4 py-3 text-sm transition">Transactions</button>
+    <button @click="activeTab='savings'; loadSavings()" :class="activeTab==='savings' ? 'tab-active' : 'text-gray-400'" class="px-4 py-3 text-sm transition">Savings Goals</button>
+  </div>
+
+  <!-- Transactions list -->
+  <div x-show="activeTab==='transactions'">
+    <template x-if="txLoading">
+      <div class="space-y-3">
+        <template x-for="i in 4">
+          <div class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100">
+            <div class="w-8 h-8 bg-gray-100 rounded-full animate-pulse shrink-0"></div>
+            <div class="flex-1 space-y-2"><div class="h-4 bg-gray-100 rounded animate-pulse w-3/4"></div><div class="h-3 bg-gray-100 rounded animate-pulse w-1/2"></div></div>
+            <div class="h-4 bg-gray-100 rounded animate-pulse w-16"></div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <template x-if="!txLoading && transactions.length === 0">
+      <div class="text-center py-12 bg-white rounded-2xl border border-gray-100">
+        <div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+        <p class="text-sm text-gray-500">No transactions yet</p>
+        <p class="text-xs text-gray-400 mt-1">Top up your wallet to get started</p>
+      </div>
+    </template>
+
+    <template x-if="!txLoading && transactions.length > 0">
+      <div class="space-y-2">
+        <template x-for="tx in transactions" :key="tx.id">
+          <div class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:shadow-sm transition">
+            <!-- Icon -->
+            <div :class="txIconClass(tx.type)">
+              <svg class="w-4 h-4" :class="txIconColor(tx.type)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="txIconPath(tx.type)"/>
+              </svg>
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate" x-text="tx.description || txLabel(tx.type)"></p>
+              <p class="text-xs text-gray-400" x-text="formatDate(tx.created_at)"></p>
+            </div>
+            <!-- Amount + Status -->
+            <div class="text-right shrink-0">
+              <p class="text-sm font-semibold" :class="txAmountColor(tx.type)" x-text="txSign(tx.type) + '₦' + fmt(tx.amount)"></p>
+              <span class="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                :class="tx.status === 'success' ? 'bg-green-50 text-green-700' : tx.status === 'pending' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-600'"
+                x-text="tx.status"></span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+  </div>
+
+  <!-- Savings Goals -->
+  <div x-show="activeTab==='savings'">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm text-gray-500" x-text="goals.length + ' active goal(s)'"></p>
+      <button @click="showGoalModal = true"
+        class="flex items-center gap-1 text-xs font-semibold text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-accent transition">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New Goal
+      </button>
+    </div>
+
+    <template x-if="goals.length === 0 && !savingsLoading">
+      <div class="text-center py-12 bg-white rounded-2xl border border-gray-100">
+        <div class="w-12 h-12 bg-accent rounded-full flex items-center justify-center mx-auto mb-3">
+          <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <p class="text-sm text-gray-500">No savings goals yet</p>
+        <button @click="showGoalModal = true" class="mt-3 text-xs font-semibold text-primary hover:underline">Create your first goal →</button>
+      </div>
+    </template>
+
+    <div class="space-y-3">
+      <template x-for="g in goals" :key="g.id">
+        <div class="bg-white rounded-2xl border border-gray-100 p-5">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <p class="font-semibold text-gray-900 text-sm" x-text="g.title"></p>
+              <p class="text-xs text-gray-400" x-text="g.frequency + ' · ' + g.days_remaining + ' days left'"></p>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+              :class="g.status === 'active' ? 'bg-accent text-primary' : g.status === 'completed' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'"
+              x-text="g.status"></span>
+          </div>
+          <!-- Progress bar -->
+          <div class="mb-2">
+            <div class="flex justify-between text-xs text-gray-500 mb-1">
+              <span x-text="'₦' + fmt(g.saved_amount) + ' saved'"></span>
+              <span x-text="fmt(g.progress_pct.toFixed(1)) + '%'"></span>
+            </div>
+            <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-primary rounded-full transition-all"
+                :style="'width:' + Math.min(g.progress_pct, 100) + '%'"></div>
+            </div>
+            <p class="text-xs text-gray-400 mt-1" x-text="'Target: ₦' + fmt(g.target_amount)"></p>
+          </div>
+          <!-- Contribute -->
+          <template x-if="g.status === 'active'">
+            <div class="flex gap-2 mt-3">
+              <input type="number" :placeholder="'Min ₦100'" x-model.number="contributeAmounts[g.id]" min="100"
+                class="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+              <button @click="contribute(g.id)"
+                class="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-xl hover:bg-secondary transition">
+                Add
+              </button>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- ─── DEPOSIT MODAL ───────────────────────────────────────────────────────── -->
+<div x-show="showDepositModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" @click.stop>
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-gray-900">Add Money to Wallet</h3>
+      <button @click="showDepositModal = false" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div x-show="!depositStep2" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
+        <input x-model.number="depositForm.amount" type="number" min="100" placeholder="e.g. 5000"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"/>
+        <p class="text-xs text-gray-400 mt-1">Minimum deposit: ₦100</p>
+      </div>
+      <!-- Quick amounts -->
+      <div class="flex gap-2 flex-wrap">
+        <template x-for="amt in [1000, 2000, 5000, 10000]" :key="amt">
+          <button @click="depositForm.amount = amt"
+            :class="depositForm.amount === amt ? 'bg-primary text-white' : 'bg-gray-50 text-gray-700'"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-100 hover:border-primary/30 transition"
+            x-text="'₦' + amt.toLocaleString()"></button>
+        </template>
+      </div>
+      <div x-show="depositError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="depositError"></div>
+      <button @click="initDeposit()" :disabled="depositLoading || !depositForm.amount"
+        class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2">
+        <svg x-show="depositLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <span x-text="depositLoading ? 'Initializing...' : 'Continue to Payment'"></span>
+      </button>
+    </div>
+
+    <!-- Step 2: Paystack link -->
+    <div x-show="depositStep2" class="text-center space-y-4">
+      <div class="w-14 h-14 bg-accent rounded-2xl flex items-center justify-center mx-auto">
+        <svg class="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+      </div>
+      <div>
+        <p class="font-semibold text-gray-900">Ready to pay</p>
+        <p class="text-sm text-gray-500 mt-1">Click the button to open Paystack secure checkout.</p>
+        <p class="text-xs text-gray-400 mt-1">After payment, click "I've paid" to confirm.</p>
+      </div>
+      <a :href="depositPayLink" target="_blank"
+        class="block w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl transition text-center">
+        Pay ₦<span x-text="fmt(depositForm.amount)"></span> via Paystack
+      </a>
+      <div class="flex gap-2">
+        <button @click="verifyPayment()"
+          class="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+          I've paid ✓
+        </button>
+        <button @click="depositStep2=false; depositPayLink=''"
+          class="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm hover:bg-gray-50 transition">
+          Cancel
+        </button>
+      </div>
+      <div x-show="verifyError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="verifyError"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── WITHDRAW MODAL ─────────────────────────────────────────────────────── -->
+<div x-show="showWithdrawModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" @click.stop>
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-gray-900">Withdraw Funds</h3>
+      <button @click="showWithdrawModal = false" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Amount (₦)</label>
+        <input x-model.number="withdrawForm.amount" type="number" min="100" placeholder="e.g. 2000"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Bank code</label>
+          <input x-model="withdrawForm.bank_code" type="text" placeholder="058 (GTBank)"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Account number</label>
+          <input x-model="withdrawForm.account_no" type="text" maxlength="10" placeholder="0123456789"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Account name</label>
+        <input x-model="withdrawForm.account_name" type="text" placeholder="Full name on account"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+      </div>
+      <div x-show="withdrawError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="withdrawError"></div>
+      <button @click="withdraw()" :disabled="withdrawLoading"
+        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2">
+        <svg x-show="withdrawLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <span x-text="withdrawLoading ? 'Processing...' : 'Withdraw ₦' + fmt(withdrawForm.amount || 0)"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── NEW SAVINGS GOAL MODAL ────────────────────────────────────────────── -->
+<div x-show="showGoalModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
+  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" @click.stop>
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-bold text-gray-900">New Savings Goal</h3>
+      <button @click="showGoalModal = false" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Goal title</label>
+        <input x-model="goalForm.title" type="text" placeholder="e.g. Surgery Fund, Antenatal Care"
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Target amount (₦)</label>
+          <input x-model.number="goalForm.target_amount" type="number" min="500" placeholder="50000"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Target date</label>
+          <input x-model="goalForm.target_date" type="date"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">Savings frequency</label>
+        <select x-model="goalForm.frequency" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+        </select>
+      </div>
+      <div x-show="goalError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="goalError"></div>
+      <button @click="createGoal()" :disabled="goalLoading"
+        class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2">
+        <svg x-show="goalLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <span x-text="goalLoading ? 'Creating...' : 'Create Savings Goal'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4">
+  <div class="flex items-center justify-around py-2">
+    <a href="/patient/dashboard" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span class="text-xs">Home</span></a>
+    <a href="/patient/appointments" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><span class="text-xs">Appointments</span></a>
+    <a href="/patient/ai" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg><span class="text-xs">AI</span></a>
+    <a href="/patient/wallet" class="flex flex-col items-center gap-1 py-2 px-3 text-primary"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M21 7H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V9a2 2 0 00-2-2zm-1 11H4V9h16v9zm-5-5a1 1 0 11-2 0 1 1 0 012 0z"/></svg><span class="text-xs font-medium">Wallet</span></a>
+    <a href="/patient/profile" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg><span class="text-xs">Profile</span></a>
+  </div>
+</nav>
+
+<script>
+function walletApp() {
+  return {
+    wallet: null, transactions: [], goals: [],
+    loading: true, txLoading: true, savingsLoading: false,
+    activeTab: 'transactions',
+    showDepositModal: false, showWithdrawModal: false, showGoalModal: false,
+    depositForm: { amount: 0 }, depositLoading: false, depositError: '',
+    depositStep2: false, depositPayLink: '', depositReference: '', verifyError: '',
+    withdrawForm: { amount: 0, bank_code: '', account_no: '', account_name: '', narration: '' },
+    withdrawLoading: false, withdrawError: '',
+    goalForm: { title: '', target_amount: 0, frequency: 'monthly', target_date: '', description: '' },
+    goalLoading: false, goalError: '',
+    contributeAmounts: {},
+
+    async init() {
+      const token = localStorage.getItem('ms_token');
+      if (!token) { window.location.href = '/login'; return; }
+      await Promise.all([this.loadWallet(token), this.loadTransactions(token)]);
+    },
+
+    async loadWallet(token) {
+      try {
+        const res = await fetch('/api/v1/wallet', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        const data = await res.json();
+        if (data.success) this.wallet = data.data;
+      } finally { this.loading = false; }
+    },
+
+    async loadTransactions(token) {
+      try {
+        const res = await fetch('/api/v1/wallet/transactions?limit=20', { headers: { 'Authorization': 'Bearer ' + (token || localStorage.getItem('ms_token')) } });
+        const data = await res.json();
+        if (data.success) this.transactions = data.data || [];
+      } finally { this.txLoading = false; }
+    },
+
+    async loadSavings() {
+      if (this.goals.length > 0) return;
+      this.savingsLoading = true;
+      try {
+        const res = await fetch('/api/v1/wallet/savings', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token') } });
+        const data = await res.json();
+        if (data.success) this.goals = data.data || [];
+      } finally { this.savingsLoading = false; }
+    },
+
+    async initDeposit() {
+      this.depositLoading = true; this.depositError = '';
+      try {
+        const res = await fetch('/api/v1/wallet/deposit/initialize', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token'), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: this.depositForm.amount, email: JSON.parse(localStorage.getItem('ms_user')||'{}').email || '' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.depositPayLink = data.data.authorization_url;
+          this.depositReference = data.data.reference;
+          this.depositStep2 = true;
+        } else {
+          this.depositError = data.message || 'Failed to initialize payment';
+        }
+      } catch(e) { this.depositError = 'Network error.'; }
+      finally { this.depositLoading = false; }
+    },
+
+    async verifyPayment() {
+      this.verifyError = '';
+      try {
+        const res = await fetch('/api/v1/wallet/deposit/verify', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token'), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reference: this.depositReference })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showDepositModal = false;
+          this.depositStep2 = false;
+          await this.loadWallet(localStorage.getItem('ms_token'));
+          await this.loadTransactions(localStorage.getItem('ms_token'));
+        } else {
+          this.verifyError = data.message || 'Payment not confirmed yet. Please try again.';
+        }
+      } catch(e) { this.verifyError = 'Network error.'; }
+    },
+
+    async withdraw() {
+      this.withdrawLoading = true; this.withdrawError = '';
+      try {
+        const res = await fetch('/api/v1/wallet/withdraw', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token'), 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.withdrawForm)
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showWithdrawModal = false;
+          await this.loadWallet(localStorage.getItem('ms_token'));
+          await this.loadTransactions(localStorage.getItem('ms_token'));
+        } else {
+          this.withdrawError = data.message || 'Withdrawal failed';
+        }
+      } catch(e) { this.withdrawError = 'Network error.'; }
+      finally { this.withdrawLoading = false; }
+    },
+
+    async createGoal() {
+      this.goalLoading = true; this.goalError = '';
+      try {
+        const res = await fetch('/api/v1/wallet/savings', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token'), 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.goalForm)
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.goals.unshift(data.data);
+          this.showGoalModal = false;
+          this.goalForm = { title:'', target_amount:0, frequency:'monthly', target_date:'', description:'' };
+        } else {
+          this.goalError = data.message || 'Failed to create goal';
+        }
+      } catch(e) { this.goalError = 'Network error.'; }
+      finally { this.goalLoading = false; }
+    },
+
+    async contribute(goalId) {
+      const amount = this.contributeAmounts[goalId];
+      if (!amount || amount < 100) return;
+      try {
+        const res = await fetch(`/api/v1/wallet/savings/${goalId}/contribute`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token'), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const idx = this.goals.findIndex(g => g.id === goalId);
+          if (idx !== -1) this.goals[idx] = data.data;
+          this.contributeAmounts[goalId] = 0;
+          await this.loadWallet(localStorage.getItem('ms_token'));
+        }
+      } catch(e) {}
+    },
+
+    fmt(n) { return (n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+
+    formatDate(d) {
+      if (!d) return '';
+      return new Date(d).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    },
+
+    txIconClass(type) {
+      const m = { deposit:'tx-icon-deposit', withdrawal:'tx-icon-withdrawal', savings:'tx-icon-savings', payment:'tx-icon-payment', refund:'tx-icon-deposit' };
+      return m[type] || 'tx-icon-payment';
+    },
+    txIconColor(type) {
+      const m = { deposit:'text-green-600', withdrawal:'text-red-500', savings:'text-blue-600', payment:'text-orange-500', refund:'text-green-600' };
+      return m[type] || 'text-gray-500';
+    },
+    txIconPath(type) {
+      if (['deposit','refund'].includes(type)) return 'M12 4v16m8-8H4';
+      if (type === 'withdrawal') return 'M20 12H4';
+      return 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z';
+    },
+    txAmountColor(type) {
+      if (['deposit','refund'].includes(type)) return 'text-green-600';
+      return 'text-red-500';
+    },
+    txSign(type) {
+      if (['deposit','refund'].includes(type)) return '+';
+      return '-';
+    },
+    txLabel(type) {
+      const m = { deposit:'Wallet Top-up', withdrawal:'Withdrawal', savings:'Savings Contribution', payment:'Consultation Fee', refund:'Refund' };
+      return m[type] || type;
+    }
+  }
+}
+</script>
+</body>
+</html>

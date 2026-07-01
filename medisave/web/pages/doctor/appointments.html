@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Appointments | MediSave Doctor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    .status-pending{background:#FEF3C7;color:#92400E;}
+    .status-confirmed{background:#DBEAFE;color:#1E40AF;}
+    .status-in_progress{background:#D1FAE5;color:#065F46;}
+    .status-completed{background:#F3F4F6;color:#374151;}
+    .status-cancelled{background:#FEE2E2;color:#991B1B;}
+    [x-cloak]{display:none!important;}
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="doctorApptApp()" x-init="init()" x-cloak>
+
+<!-- Toast -->
+<div x-show="toast" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+  x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+  class="fixed top-5 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium max-w-sm w-full mx-4"
+  :class="toastType==='error' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'">
+  <svg x-show="toastType!=='error'" class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+  <svg x-show="toastType==='error'" class="w-5 h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+  <span x-text="toast"></span>
+</div>
+
+<!-- Cancel Modal -->
+<div x-show="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showCancelModal=false">
+  <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-4">
+    <div class="flex items-start justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Cancel Appointment</h2>
+        <p class="text-sm text-gray-500 mt-0.5" x-text="cancelApptTarget ? 'Patient: '+patientName(cancelApptTarget) : ''"></p>
+      </div>
+      <button @click="showCancelModal=false" class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+      <svg class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      <p class="text-xs text-amber-700">The consultation fee will be refunded to the patient's wallet.</p>
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Reason for cancellation <span class="text-red-400">*</span></label>
+      <textarea x-model="cancelReason" rows="3" placeholder="Provide a reason (min 5 characters)..."
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"></textarea>
+    </div>
+    <p x-show="cancelError" x-text="cancelError" class="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2"></p>
+    <div class="flex gap-3">
+      <button @click="showCancelModal=false" class="flex-1 py-3 border border-gray-200 text-gray-700 rounded-2xl font-semibold text-sm hover:bg-gray-50">Keep It</button>
+      <button @click="confirmCancel()" :disabled="cancelLoading || cancelReason.length < 5"
+        class="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold text-sm hover:bg-red-700 transition disabled:opacity-50">
+        <span x-text="cancelLoading ? 'Cancelling...' : 'Cancel Appointment'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Consultation Modal -->
+<div x-show="showConsultModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showConsultModal=false">
+  <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div class="p-6 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="text-lg font-bold text-gray-900">Consultation</h2>
+        <p class="text-sm text-gray-500 mt-0.5" x-text="selectedAppt ? patientName(selectedAppt) : ''"></p>
+      </div>
+      <button @click="showConsultModal=false" class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="flex border-b border-gray-100 flex-shrink-0">
+      <button @click="consultTab='notes'" :class="consultTab==='notes'?'border-b-2 border-primary text-primary font-semibold':'text-gray-500'" class="flex-1 py-3 text-sm transition">Notes</button>
+      <button @click="consultTab='prescriptions'" :class="consultTab==='prescriptions'?'border-b-2 border-primary text-primary font-semibold':'text-gray-500'" class="flex-1 py-3 text-sm transition">Prescriptions</button>
+      <button @click="consultTab='messages'" :class="consultTab==='messages'?'border-b-2 border-primary text-primary font-semibold':'text-gray-500'" class="flex-1 py-3 text-sm transition">Messages</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6">
+      <!-- Notes -->
+      <div x-show="consultTab==='notes'" class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Doctor Notes *</label>
+          <textarea x-model="notesForm.doctor_notes" rows="4" placeholder="Clinical notes about this patient..."
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Diagnosis</label>
+            <input x-model="notesForm.diagnosis" type="text" placeholder="e.g. Hypertension Stage 1"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Treatment Plan</label>
+            <input x-model="notesForm.treatment" type="text" placeholder="e.g. Lifestyle modification"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Follow-up Date</label>
+            <input x-model="notesForm.follow_up_date" type="date"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Follow-up Notes</label>
+            <input x-model="notesForm.follow_up_notes" type="text" placeholder="Instructions..."
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          </div>
+        </div>
+        <p x-show="notesError" x-text="notesError" class="text-sm text-red-600"></p>
+        <button @click="saveNotes()" :disabled="notesLoading || notesForm.doctor_notes.length < 10"
+          class="w-full py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-secondary transition disabled:opacity-50">
+          <span x-text="notesLoading ? 'Saving...' : 'Save Notes'"></span>
+        </button>
+      </div>
+
+      <!-- Prescriptions -->
+      <div x-show="consultTab==='prescriptions'" class="space-y-4">
+        <div x-show="prescriptions.length > 0" class="space-y-2 mb-4">
+          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Already Prescribed</p>
+          <template x-for="p in prescriptions" :key="p.id">
+            <div class="bg-accent rounded-xl p-4">
+              <p class="font-semibold text-sm text-gray-900" x-text="p.medicine_name"></p>
+              <p class="text-xs text-gray-500" x-text="p.dosage+' · '+p.frequency+' · '+p.duration"></p>
+              <p x-show="p.instructions" class="text-xs text-gray-400 mt-0.5" x-text="p.instructions"></p>
+            </div>
+          </template>
+        </div>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Add Prescription</p>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2">
+            <input x-model="prescForm.medicine_name" type="text" placeholder="Medicine name *"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          </div>
+          <input x-model="prescForm.dosage" type="text" placeholder="Dosage (e.g. 500mg) *"
+            class="px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          <input x-model="prescForm.frequency" type="text" placeholder="Frequency (e.g. Twice daily) *"
+            class="px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          <input x-model="prescForm.duration" type="text" placeholder="Duration (e.g. 7 days) *"
+            class="px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+          <input x-model="prescForm.instructions" type="text" placeholder="Instructions (optional)"
+            class="px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+        </div>
+        <p x-show="prescError" x-text="prescError" class="text-sm text-red-600"></p>
+        <button @click="addPrescription()" :disabled="prescLoading || !prescForm.medicine_name || !prescForm.dosage || !prescForm.frequency || !prescForm.duration"
+          class="w-full py-3 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-secondary transition disabled:opacity-50">
+          <span x-text="prescLoading ? 'Adding...' : '+ Add Prescription'"></span>
+        </button>
+      </div>
+
+      <!-- Messages -->
+      <div x-show="consultTab==='messages'" class="space-y-3">
+        <div x-show="messages.length === 0" class="text-center py-8 text-gray-400 text-sm">No messages yet.</div>
+        <template x-for="m in messages" :key="m.id">
+          <div :class="m.sender_role==='doctor' ? 'ml-8' : 'mr-8'">
+            <div :class="m.sender_role==='doctor' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-900'" class="rounded-2xl px-4 py-3 text-sm">
+              <p x-text="m.message"></p>
+            </div>
+            <p class="text-xs text-gray-400 mt-1" :class="m.sender_role==='doctor'?'text-right':''" x-text="formatTime(m.created_at)"></p>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Complete button -->
+    <div x-show="selectedAppt && selectedAppt.status==='in_progress'" class="p-4 border-t border-gray-100 flex-shrink-0">
+      <button @click="completeConsult()" :disabled="completeLoading"
+        class="w-full py-3 bg-green-600 text-white rounded-2xl font-bold text-sm hover:bg-green-700 transition disabled:opacity-50">
+        <span x-text="completeLoading ? 'Completing...' : 'Mark as Completed'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="max-w-2xl mx-auto px-4 py-8 pb-28">
+  <div class="flex items-center gap-4 mb-6">
+    <a href="/doctor/dashboard" class="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:text-primary transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </a>
+    <h1 class="text-xl font-bold text-gray-900">Appointments</h1>
+  </div>
+
+  <!-- Today summary card -->
+  <div x-show="todayAppts.length > 0" class="bg-gradient-to-r from-primary to-secondary text-white rounded-2xl p-5 mb-6">
+    <p class="text-sm font-medium opacity-90 mb-1">Today's Schedule</p>
+    <p class="text-2xl font-bold" x-text="todayAppts.length + ' appointment' + (todayAppts.length===1?'':'s')"></p>
+    <div class="mt-3 space-y-2">
+      <template x-for="appt in todayAppts.slice(0,3)" :key="appt.id">
+        <div class="flex items-center justify-between bg-white/20 rounded-xl px-3 py-2">
+          <div>
+            <p class="text-sm font-semibold" x-text="patientName(appt)"></p>
+            <p class="text-xs opacity-80" x-text="formatTime(appt.scheduled_at)+' · '+appt.type"></p>
+          </div>
+          <span :class="'status-'+appt.status" class="px-2 py-0.5 rounded-lg text-xs font-semibold capitalize" x-text="appt.status.replace('_',' ')"></span>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+    <template x-for="s in ['all','pending','confirmed','in_progress','completed','cancelled']" :key="s">
+      <button @click="statusFilter=s; currentPage=1; fetchAppointments()"
+        :class="statusFilter===s ? 'bg-primary text-white' : 'bg-white text-gray-600 border border-gray-200'"
+        class="px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition capitalize"
+        x-text="s==='in_progress'?'In Progress':s==='all'?'All':s.charAt(0).toUpperCase()+s.slice(1)"></button>
+    </template>
+  </div>
+
+  <!-- Loading -->
+  <div x-show="loading" class="space-y-3">
+    <template x-for="i in 4" :key="i">
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
+        <div class="flex gap-4">
+          <div class="w-14 h-14 bg-gray-100 rounded-2xl"></div>
+          <div class="flex-1 space-y-2 pt-1">
+            <div class="h-4 bg-gray-100 rounded w-36"></div>
+            <div class="h-3 bg-gray-100 rounded w-52"></div>
+            <div class="h-3 bg-gray-100 rounded w-20"></div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Empty -->
+  <div x-show="!loading && appointments.length===0" class="text-center py-16">
+    <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+    </div>
+    <p class="font-semibold text-gray-900 mb-1">No appointments</p>
+    <p class="text-sm text-gray-500">Your appointments will appear here once patients book with you.</p>
+  </div>
+
+  <!-- Appointment cards -->
+  <div x-show="!loading" class="space-y-3">
+    <template x-for="appt in appointments" :key="appt.id">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-primary/30 transition">
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+            <span x-text="(appt.patient?.user?.first_name||'P')[0]"></span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <p class="font-bold text-gray-900 text-sm" x-text="patientName(appt)"></p>
+              <span :class="'status-'+appt.status" class="px-2.5 py-1 rounded-lg text-xs font-semibold capitalize flex-shrink-0" x-text="appt.status.replace('_',' ')"></span>
+            </div>
+            <p class="text-xs text-gray-500 truncate mb-1" x-text="'Chief complaint: '+appt.chief_complaint"></p>
+            <div class="flex items-center gap-3 text-xs text-gray-500 mb-3">
+              <span class="flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span x-text="formatDate(appt.scheduled_at)"></span>
+              </span>
+              <span class="capitalize" x-text="appt.type"></span>
+              <span class="font-semibold text-primary" x-text="'₦'+appt.consultation_fee.toLocaleString()"></span>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <template x-if="appt.status==='pending' || appt.status==='confirmed'">
+                <button @click="startConsultation(appt)" :disabled="startLoading===appt.id"
+                  class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition disabled:opacity-50">
+                  <span x-text="startLoading===appt.id ? 'Starting...' : 'Start Consultation'"></span>
+                </button>
+              </template>
+              <template x-if="appt.status==='in_progress'">
+                <a :href="'/consultation/'+appt.id+'/call'" class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition text-center">Join Video Call</a>
+              </template>
+              <template x-if="appt.status==='in_progress'">
+                <button @click="openConsult(appt)" class="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">Notes</button>
+              </template>
+              <template x-if="appt.status==='completed'">
+                <button @click="openConsult(appt)" class="flex-1 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">View Summary</button>
+              </template>
+              <template x-if="appt.status==='pending' || appt.status==='confirmed'">
+                <button @click="openCancelModal(appt)" class="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition">Cancel</button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Pagination -->
+  <div x-show="!loading && totalPages > 1" class="flex items-center justify-between mt-6">
+    <button @click="prevPage()" :disabled="currentPage===1" class="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition">← Prev</button>
+    <span class="text-sm text-gray-500" x-text="'Page '+currentPage+' of '+totalPages"></span>
+    <button @click="nextPage()" :disabled="currentPage===totalPages" class="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition">Next →</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pb-safe">
+  <div class="flex items-center justify-around py-2">
+    <a href="/doctor/dashboard" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-xs">Dashboard</span>
+    </a>
+    <a href="/doctor/appointments" class="flex flex-col items-center gap-1 py-2 px-3 text-primary">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+      <span class="text-xs font-medium">Appointments</span>
+    </a>
+    <a href="/doctor/patients" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="text-xs">Patients</span>
+    </a>
+    <a href="/doctor/earnings" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-xs">Earnings</span>
+    </a>
+    <a href="/doctor/profile" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="text-xs">Profile</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+function doctorApptApp() {
+  return {
+    appointments: [], todayAppts: [], loading: true,
+    currentPage: 1, totalPages: 1, statusFilter: 'all',
+    startLoading: null, completeLoading: false,
+    showConsultModal: false, selectedAppt: null, consultTab: 'notes',
+    messages: [], prescriptions: [],
+    notesForm: { doctor_notes: '', diagnosis: '', treatment: '', follow_up_date: '', follow_up_notes: '' },
+    notesLoading: false, notesError: '',
+    prescForm: { medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' },
+    prescLoading: false, prescError: '',
+    // Cancel modal
+    showCancelModal: false, cancelApptTarget: null, cancelReason: '', cancelLoading: false, cancelError: '',
+    // Toast
+    toast: '', toastType: 'success',
+
+    async init() {
+      if (!localStorage.getItem('ms_token')) { window.location.href = '/login'; return; }
+      await Promise.all([this.fetchAppointments(), this.fetchToday()]);
+    },
+
+    async fetchAppointments() {
+      this.loading = true;
+      try {
+        const params = new URLSearchParams({ page: this.currentPage, limit: 10 });
+        if (this.statusFilter !== 'all') params.set('status', this.statusFilter);
+        const r = await this.api('GET', `/api/v1/appointments?${params}`);
+        this.appointments = r.data || [];
+        if (r.meta) this.totalPages = r.meta.total_pages || 1;
+      } catch(e) { this.appointments = []; }
+      finally { this.loading = false; }
+    },
+
+    async fetchToday() {
+      try {
+        const r = await this.api('GET', '/api/v1/doctors/me/today');
+        this.todayAppts = r.data || [];
+      } catch(e) { this.todayAppts = []; }
+    },
+
+    async startConsultation(appt) {
+      this.startLoading = appt.id;
+      try {
+        await this.api('PATCH', `/api/v1/appointments/${appt.id}/start`);
+        appt.status = 'in_progress';
+        await this.fetchToday();
+        this.showToast('Consultation started');
+      } catch(e) { this.showToast(e.message || 'Failed to start consultation', 'error'); }
+      finally { this.startLoading = null; }
+    },
+
+    async openConsult(appt) {
+      this.selectedAppt = appt;
+      this.consultTab = 'notes';
+      this.notesForm = { doctor_notes: '', diagnosis: '', treatment: '', follow_up_date: '', follow_up_notes: '' };
+      this.prescForm = { medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' };
+      this.notesError = ''; this.prescError = '';
+      this.messages = []; this.prescriptions = [];
+      this.showConsultModal = true;
+      try {
+        const [cRes, mRes] = await Promise.all([
+          this.api('GET', `/api/v1/consultations/${appt.id}`),
+          this.api('GET', `/api/v1/consultations/${appt.id}/messages`),
+        ]);
+        const c = cRes.data?.consultation;
+        if (c) {
+          this.notesForm.doctor_notes = c.doctor_notes || '';
+          this.notesForm.diagnosis = c.diagnosis || '';
+          this.notesForm.treatment = c.treatment || '';
+          this.notesForm.follow_up_notes = c.follow_up_notes || '';
+          if (c.follow_up_date) this.notesForm.follow_up_date = c.follow_up_date.slice(0,10);
+        }
+        this.prescriptions = cRes.data?.prescriptions || [];
+        this.messages = mRes.data || [];
+      } catch(e) { /* consultation may not exist yet if appointment just started */ }
+    },
+
+    async saveNotes() {
+      this.notesLoading = true; this.notesError = '';
+      try {
+        await this.api('PUT', `/api/v1/consultations/${this.selectedAppt.id}/notes`, this.notesForm);
+      } catch(e) { this.notesError = e.message || 'Failed to save notes'; }
+      finally { this.notesLoading = false; }
+    },
+
+    async addPrescription() {
+      this.prescLoading = true; this.prescError = '';
+      try {
+        const r = await this.api('POST', `/api/v1/consultations/${this.selectedAppt.id}/prescriptions`, this.prescForm);
+        this.prescriptions.push(r.data);
+        this.prescForm = { medicine_name: '', dosage: '', frequency: '', duration: '', instructions: '' };
+      } catch(e) { this.prescError = e.message || 'Failed to add prescription'; }
+      finally { this.prescLoading = false; }
+    },
+
+    async completeConsult() {
+      this.completeLoading = true;
+      try {
+        await this.api('PATCH', `/api/v1/appointments/${this.selectedAppt.id}/complete`);
+        this.selectedAppt.status = 'completed';
+        this.showConsultModal = false;
+        await this.fetchAppointments();
+        await this.fetchToday();
+        this.showToast('Consultation marked as completed');
+      } catch(e) { this.showToast(e.message || 'Failed to complete consultation', 'error'); }
+      finally { this.completeLoading = false; }
+    },
+
+    openCancelModal(appt) {
+      this.cancelApptTarget = appt;
+      this.cancelReason = '';
+      this.cancelError = '';
+      this.showCancelModal = true;
+    },
+
+    async confirmCancel() {
+      if (this.cancelReason.length < 5) return;
+      this.cancelLoading = true; this.cancelError = '';
+      try {
+        await this.api('PATCH', `/api/v1/appointments/${this.cancelApptTarget.id}/cancel`, { reason: this.cancelReason });
+        this.showCancelModal = false;
+        await this.fetchAppointments();
+        await this.fetchToday();
+        this.showToast('Appointment cancelled. Fee refunded to patient.');
+      } catch(e) { this.cancelError = e.message || 'Failed to cancel appointment'; }
+      finally { this.cancelLoading = false; }
+    },
+
+    showToast(msg, type = 'success') {
+      this.toast = msg; this.toastType = type;
+      setTimeout(() => { this.toast = ''; }, 4000);
+    },
+
+    prevPage() { if (this.currentPage > 1) { this.currentPage--; this.fetchAppointments(); } },
+    nextPage() { if (this.currentPage < this.totalPages) { this.currentPage++; this.fetchAppointments(); } },
+
+    patientName(appt) {
+      const p = appt.patient?.user;
+      return p ? p.first_name + ' ' + p.last_name : 'Patient';
+    },
+    formatDate(iso) { return new Date(iso).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }); },
+    formatTime(iso) { return new Date(iso).toLocaleString('en-NG', { timeStyle: 'short', dateStyle: 'short' }); },
+
+    async api(method, url, body) {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+localStorage.getItem('ms_token') },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Request failed');
+      return data;
+    },
+  };
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Patients | MediSave Doctor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    [x-cloak]{display:none!important;}
+    .status-pending{background:#FEF3C7;color:#92400E;}
+    .status-confirmed{background:#DBEAFE;color:#1E40AF;}
+    .status-in_progress{background:#D1FAE5;color:#065F46;}
+    .status-completed{background:#F3F4F6;color:#374151;}
+    .status-cancelled{background:#FEE2E2;color:#991B1B;}
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="patientsApp()" x-init="init()" x-cloak>
+
+<!-- Patient History Drawer -->
+<div x-show="showHistory" class="fixed inset-0 z-50 flex justify-end" @click.self="showHistory=false">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+  <div class="relative bg-white w-full max-w-md h-full flex flex-col shadow-2xl overflow-hidden" @click.stop>
+    <div class="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+      <div>
+        <h2 class="font-bold text-gray-900" x-text="activePatient ? activePatient.name : ''"></h2>
+        <p class="text-xs text-gray-500 mt-0.5">Consultation History</p>
+      </div>
+      <button @click="showHistory=false" class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- History list -->
+    <div class="flex-1 overflow-y-auto p-5 space-y-4">
+      <div x-show="historyLoading" class="space-y-3">
+        <template x-for="i in 3" :key="i">
+          <div class="bg-gray-50 rounded-2xl p-4 animate-pulse h-24"></div>
+        </template>
+      </div>
+
+      <div x-show="!historyLoading && history.length===0" class="text-center py-12">
+        <p class="text-gray-500 text-sm">No consultations found for this patient.</p>
+      </div>
+
+      <template x-for="appt in history" :key="appt.id">
+        <div class="bg-gray-50 rounded-2xl p-4 space-y-3">
+          <!-- Header -->
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <p class="text-sm font-semibold text-gray-900" x-text="formatDate(appt.scheduled_at)"></p>
+              <p class="text-xs text-gray-500 capitalize mt-0.5" x-text="appt.type + ' consultation'"></p>
+            </div>
+            <span :class="'status-'+appt.status" class="px-2.5 py-1 rounded-lg text-xs font-semibold capitalize flex-shrink-0" x-text="appt.status.replace('_',' ')"></span>
+          </div>
+          <!-- Chief complaint -->
+          <div x-show="appt.chief_complaint" class="bg-white rounded-xl p-3">
+            <p class="text-xs text-gray-400 font-medium mb-1">Chief Complaint</p>
+            <p class="text-sm text-gray-700" x-text="appt.chief_complaint"></p>
+          </div>
+          <!-- Notes & prescriptions -->
+          <div x-show="appt.consultation" class="space-y-2">
+            <div x-show="appt.consultation?.notes" class="bg-white rounded-xl p-3">
+              <p class="text-xs text-gray-400 font-medium mb-1">Clinical Notes</p>
+              <p class="text-sm text-gray-700" x-text="appt.consultation?.notes"></p>
+            </div>
+            <template x-if="appt.consultation?.prescriptions?.length">
+              <div class="bg-white rounded-xl p-3">
+                <p class="text-xs text-gray-400 font-medium mb-2">Prescriptions</p>
+                <div class="space-y-1.5">
+                  <template x-for="rx in appt.consultation.prescriptions" :key="rx.id">
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="font-medium text-gray-900" x-text="rx.medication_name"></span>
+                      <span class="text-xs text-gray-500" x-text="rx.dosage + ' · ' + rx.duration"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+          <!-- Fee -->
+          <div class="flex items-center justify-between text-xs text-gray-500">
+            <span x-text="'Fee: ₦' + (appt.consultation_fee||0).toLocaleString()"></span>
+            <span x-text="'#' + appt.id"></span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="max-w-2xl mx-auto px-4 py-8 pb-28">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-4">
+      <a href="/doctor/dashboard" class="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:text-primary transition shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
+      <h1 class="text-xl font-bold text-gray-900">My Patients</h1>
+    </div>
+    <span class="text-sm text-gray-500" x-text="total + ' total'"></span>
+  </div>
+
+  <!-- Search -->
+  <div class="relative mb-5">
+    <svg class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <input x-model="search" @input.debounce.350ms="applySearch()" type="text" placeholder="Search by patient name..."
+      class="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"/>
+  </div>
+
+  <!-- Loading -->
+  <div x-show="loading" class="space-y-3">
+    <template x-for="i in 5" :key="i">
+      <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse flex gap-4">
+        <div class="w-12 h-12 bg-gray-100 rounded-2xl flex-shrink-0"></div>
+        <div class="flex-1 space-y-2 pt-1">
+          <div class="h-4 bg-gray-100 rounded w-36"></div>
+          <div class="h-3 bg-gray-100 rounded w-24"></div>
+          <div class="h-3 bg-gray-100 rounded w-16"></div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Empty -->
+  <div x-show="!loading && filtered.length===0" class="text-center py-16">
+    <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </div>
+    <p class="font-semibold text-gray-900 mb-1" x-text="search ? 'No patients found' : 'No patients yet'"></p>
+    <p class="text-sm text-gray-500" x-text="search ? 'Try a different name' : 'Your patients will appear here once you complete consultations'"></p>
+  </div>
+
+  <!-- Patient Cards -->
+  <div x-show="!loading" class="space-y-3">
+    <template x-for="p in filtered" :key="p.patientID">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-primary/30 transition">
+        <div class="flex items-center gap-4">
+          <!-- Avatar -->
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-base flex-shrink-0"
+            x-text="p.initials"></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="font-bold text-gray-900 text-sm truncate" x-text="p.name"></p>
+                <p class="text-xs text-gray-500 mt-0.5" x-text="p.consultations + ' consultation' + (p.consultations!==1?'s':'')"></p>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-xs text-gray-400">Last visit</p>
+                <p class="text-xs font-semibold text-gray-700" x-text="p.lastVisit"></p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 mt-3">
+              <span :class="'status-'+p.lastStatus" class="px-2 py-0.5 rounded-lg text-xs font-semibold capitalize" x-text="p.lastStatus.replace('_',' ')"></span>
+              <button @click="viewHistory(p)"
+                class="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-accent text-primary rounded-xl text-xs font-semibold hover:bg-green-200 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                View History
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Pagination -->
+  <div x-show="!loading && totalPages > 1" class="flex items-center justify-between mt-6">
+    <button @click="prevPage()" :disabled="page===1" class="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition">← Prev</button>
+    <span class="text-sm text-gray-500" x-text="'Page '+page+' of '+totalPages"></span>
+    <button @click="nextPage()" :disabled="page===totalPages" class="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition">Next →</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pb-safe">
+  <div class="flex items-center justify-around py-2">
+    <a href="/doctor/dashboard" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-xs">Home</span>
+    </a>
+    <a href="/doctor/appointments" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="text-xs">Schedule</span>
+    </a>
+    <a href="/doctor/patients" class="flex flex-col items-center gap-1 py-2 px-3 text-primary">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="text-xs font-medium">Patients</span>
+    </a>
+    <a href="/doctor/earnings" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-xs">Earnings</span>
+    </a>
+    <a href="/doctor/profile" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="text-xs">Profile</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+function patientsApp() {
+  return {
+    loading: true,
+    appointments: [],
+    patients: [],    // deduplicated
+    filtered: [],
+    search: '',
+    page: 1, totalPages: 1, total: 0,
+    // History drawer
+    showHistory: false,
+    activePatient: null,
+    history: [],
+    historyLoading: false,
+
+    async init() {
+      if (!localStorage.getItem('ms_token')) { window.location.href = '/login'; return; }
+      await this.fetchAppointments();
+    },
+
+    async fetchAppointments() {
+      this.loading = true;
+      try {
+        const params = new URLSearchParams({ page: this.page, limit: 50, status: 'completed' });
+        const r = await this.api('GET', `/api/v1/appointments?${params}`);
+        const appts = r.data || [];
+
+        // Deduplicate patients from appointments
+        const map = new Map();
+        for (const a of appts) {
+          const pid = a.patient?.id;
+          if (!pid) continue;
+          const firstName = a.patient?.user?.first_name || '';
+          const lastName  = a.patient?.user?.last_name  || '';
+          const name = (firstName + ' ' + lastName).trim() || 'Unknown Patient';
+          if (!map.has(pid)) {
+            map.set(pid, {
+              patientID: pid,
+              name,
+              initials: (firstName[0]||'') + (lastName[0]||'P'),
+              consultations: 0,
+              lastVisit: '',
+              lastStatus: a.status,
+              appointments: [],
+            });
+          }
+          const entry = map.get(pid);
+          entry.consultations++;
+          entry.appointments.push(a);
+          if (!entry.lastVisit || new Date(a.scheduled_at) > new Date(entry.lastVisit)) {
+            entry.lastVisit = a.scheduled_at;
+            entry.lastStatus = a.status;
+          }
+        }
+
+        this.patients = [...map.values()].map(p => ({
+          ...p,
+          lastVisit: p.lastVisit ? this.formatDate(p.lastVisit) : '—',
+        }));
+        this.total = this.patients.length;
+        this.applySearch();
+
+        if (r.meta) this.totalPages = r.meta.total_pages || 1;
+      } catch(e) { this.patients = []; this.filtered = []; }
+      finally { this.loading = false; }
+    },
+
+    applySearch() {
+      const q = this.search.toLowerCase().trim();
+      this.filtered = q
+        ? this.patients.filter(p => p.name.toLowerCase().includes(q))
+        : [...this.patients];
+    },
+
+    async viewHistory(patient) {
+      this.activePatient = patient;
+      this.history = [];
+      this.showHistory = true;
+      this.historyLoading = true;
+      try {
+        // Fetch all appointments with this patient (any status)
+        const params = new URLSearchParams({ page: 1, limit: 50 });
+        const r = await this.api('GET', `/api/v1/appointments?${params}`);
+        const all = (r.data || []).filter(a => a.patient?.id === patient.patientID);
+        // Sort newest first
+        all.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at));
+        // Enrich with consultation data for completed ones
+        for (const appt of all) {
+          if (appt.status === 'completed' || appt.status === 'in_progress') {
+            try {
+              const cRes = await this.api('GET', `/api/v1/consultations/${appt.id}`);
+              appt.consultation = cRes.data;
+              const rxRes = await this.api('GET', `/api/v1/consultations/${appt.id}/prescriptions`);
+              if (appt.consultation) appt.consultation.prescriptions = rxRes.data || [];
+            } catch(_) {}
+          }
+        }
+        this.history = all;
+      } catch(e) { this.history = []; }
+      finally { this.historyLoading = false; }
+    },
+
+    prevPage() { if (this.page > 1) { this.page--; this.fetchAppointments(); } },
+    nextPage() { if (this.page < this.totalPages) { this.page++; this.fetchAppointments(); } },
+
+    formatDate(iso) {
+      return new Date(iso).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' });
+    },
+
+    async api(method, url, body) {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('ms_token') },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (res.status === 401) { window.location.href = '/login'; throw new Error('Unauthorized'); }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Request failed');
+      return data;
+    },
+  };
+}
+</script>
+</body>
+</html>

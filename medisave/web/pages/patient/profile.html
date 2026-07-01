@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Profile | MediSave</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>body{font-family:'Inter',sans-serif;} .form-input{@apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition;}</style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="profileApp()" x-init="init()">
+
+<div class="max-w-2xl mx-auto px-4 py-8 pb-24 lg:pb-8">
+
+  <!-- Back header -->
+  <div class="flex items-center gap-4 mb-6">
+    <a href="/patient/dashboard"
+      class="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:text-primary hover:border-primary/30 transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </a>
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">My Profile</h1>
+      <p class="text-xs text-gray-400">Manage your personal & health information</p>
+    </div>
+  </div>
+
+  <!-- Success / Error banners -->
+  <div x-show="success" x-transition x-cloak
+    class="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+    Profile updated successfully.
+  </div>
+  <div x-show="error" x-transition
+    class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
+    <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/></svg>
+    <span x-text="error"></span>
+  </div>
+
+  <!-- Avatar section -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+    <div class="flex items-center gap-4">
+      <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl shrink-0"
+        x-text="initials()"></div>
+      <div>
+        <p class="font-semibold text-gray-900" x-text="form.first_name + ' ' + form.last_name"></p>
+        <p class="text-sm text-gray-400" x-text="form.email"></p>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-accent text-primary mt-1">Patient</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal Info -->
+  <form @submit.prevent="save()" class="space-y-4">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        Personal Information
+      </h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">First name</label>
+          <input x-model="form.first_name" type="text" required class="form-input"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Last name</label>
+          <input x-model="form.last_name" type="text" required class="form-input"/>
+        </div>
+      </div>
+      <div class="mt-4">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Phone number</label>
+        <input x-model="form.phone" type="tel" class="form-input"/>
+      </div>
+      <div class="mt-4">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Email address</label>
+        <input x-model="form.email" type="email" disabled class="form-input bg-gray-50 cursor-not-allowed opacity-60"/>
+        <p class="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+      </div>
+    </div>
+
+    <!-- Health Information -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        Health Information
+      </h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Date of birth</label>
+          <input x-model="form.date_of_birth" type="date" class="form-input"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Gender</label>
+          <select x-model="form.gender" class="form-input bg-white">
+            <option value="">Prefer not to say</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Blood group</label>
+          <select x-model="form.blood_group" class="form-input bg-white">
+            <option value="">Unknown</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option>
+            <option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1">Genotype</label>
+          <select x-model="form.genotype" class="form-input bg-white">
+            <option value="">Unknown</option>
+            <option>AA</option><option>AS</option><option>SS</option><option>AC</option>
+          </select>
+        </div>
+      </div>
+      <div class="mt-4">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Allergies</label>
+        <input x-model="form.allergies" type="text" placeholder="e.g. Penicillin, Peanuts" class="form-input"/>
+      </div>
+      <div class="mt-4">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Chronic conditions</label>
+        <input x-model="form.chronic_conditions" type="text" placeholder="e.g. Hypertension, Diabetes" class="form-input"/>
+      </div>
+    </div>
+
+    <!-- Address -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Location
+      </h2>
+      <div>
+        <label class="block text-xs font-medium text-gray-500 mb-1">State of residence</label>
+        <select x-model="form.state" class="form-input bg-white">
+          <option value="">Select state</option>
+          <template x-for="s in nigerianStates" :key="s"><option :value="s" x-text="s"></option></template>
+        </select>
+      </div>
+      <div class="mt-4">
+        <label class="block text-xs font-medium text-gray-500 mb-1">Address</label>
+        <input x-model="form.address" type="text" placeholder="12 Herbert Macaulay Way, Abuja" class="form-input"/>
+      </div>
+    </div>
+
+    <!-- Save button -->
+    <button type="submit" :disabled="saving"
+      class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3.5 rounded-xl transition-all shadow-lg shadow-primary/25 disabled:opacity-60 flex items-center justify-center gap-2">
+      <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <span x-text="saving ? 'Saving...' : 'Save Changes'"></span>
+    </button>
+  </form>
+
+  <!-- Change Password -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mt-4">
+    <h2 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      Change Password
+    </h2>
+    <div class="space-y-3">
+      <input x-model="pw.current" type="password" placeholder="Current password" class="form-input"/>
+      <input x-model="pw.new" type="password" placeholder="New password (min. 8 chars)" class="form-input" minlength="8"/>
+      <button @click="changePassword()"
+        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+        Update Password
+      </button>
+    </div>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="mt-6">
+    <button @click="logout()" class="w-full flex items-center justify-center gap-2 py-3 border border-red-200 rounded-xl text-red-600 hover:bg-red-50 transition text-sm font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      Sign out
+    </button>
+  </div>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pb-safe">
+  <div class="flex items-center justify-around py-2">
+    <a href="/patient/dashboard" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-xs">Home</span>
+    </a>
+    <a href="/patient/appointments" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="text-xs">Appointments</span>
+    </a>
+    <a href="/patient/ai" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+      <span class="text-xs">AI Chat</span>
+    </a>
+    <a href="/patient/wallet" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+      <span class="text-xs">Wallet</span>
+    </a>
+    <a href="/patient/profile" class="flex flex-col items-center gap-1 py-2 px-3 text-primary">
+      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>
+      <span class="text-xs font-medium">Profile</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+function profileApp() {
+  return {
+    form: { first_name:'',last_name:'',email:'',phone:'',date_of_birth:'',gender:'',blood_group:'',genotype:'',allergies:'',chronic_conditions:'',state:'',address:'' },
+    pw: { current:'', new:'' },
+    saving: false, success: false, error: '',
+    nigerianStates: ['Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo','Ekiti','Enugu','FCT','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos','Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara'],
+
+    async init() {
+      const token = localStorage.getItem('ms_token');
+      if (!token) { window.location.href = '/login'; return; }
+      try {
+        const res = await fetch('/api/v1/patients/profile', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        const data = await res.json();
+        if (data.success) {
+          const p = data.data;
+          this.form = {
+            first_name: p.user?.first_name || '',
+            last_name: p.user?.last_name || '',
+            email: p.user?.email || '',
+            phone: p.user?.phone || '',
+            date_of_birth: p.date_of_birth ? p.date_of_birth.split('T')[0] : '',
+            gender: p.gender || '',
+            blood_group: p.blood_group || '',
+            genotype: p.genotype || '',
+            allergies: p.allergies || '',
+            chronic_conditions: p.chronic_conditions || '',
+            state: p.state || '',
+            address: p.address || ''
+          };
+        }
+      } catch(e) { console.error(e); }
+    },
+
+    async save() {
+      this.saving = true; this.success = false; this.error = '';
+      try {
+        const token = localStorage.getItem('ms_token');
+        const res = await fetch('/api/v1/patients/profile', {
+          method: 'PUT',
+          headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+          body: JSON.stringify(this.form)
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.success = true;
+          const stored = JSON.parse(localStorage.getItem('ms_user') || '{}');
+          stored.first_name = this.form.first_name;
+          stored.last_name = this.form.last_name;
+          localStorage.setItem('ms_user', JSON.stringify(stored));
+          setTimeout(() => this.success = false, 3000);
+        } else {
+          this.error = data.message || 'Update failed';
+        }
+      } catch(e) { this.error = 'Network error. Please try again.'; }
+      finally { this.saving = false; }
+    },
+
+    async changePassword() {
+      if (!this.pw.current || !this.pw.new) { this.error = 'Please fill both password fields.'; return; }
+      try {
+        const token = localStorage.getItem('ms_token');
+        const res = await fetch('/api/v1/auth/change-password', {
+          method: 'POST',
+          headers: { 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+          body: JSON.stringify({ current_password: this.pw.current, new_password: this.pw.new })
+        });
+        const data = await res.json();
+        if (data.success) { this.success = true; this.pw = {current:'',new:''}; }
+        else { this.error = data.message; }
+      } catch(e) { this.error = 'Network error.'; }
+    },
+
+    initials() {
+      return ((this.form.first_name[0]||'') + (this.form.last_name[0]||'')).toUpperCase() || 'U';
+    },
+
+    logout() { localStorage.clear(); window.location.href = '/login'; }
+  }
+}
+</script>
+</body>
+</html>

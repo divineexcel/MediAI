@@ -1,0 +1,40 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Database
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Firebase credentials
+config/firebase-service-account.json
+
+# Binaries
+medisave
+medisave-*
+*.exe
+*.out
+
+# Go build cache
+/vendor/
+go.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Uploads
+uploads/
+storage/
+
+# Docker volumes
+.docker/

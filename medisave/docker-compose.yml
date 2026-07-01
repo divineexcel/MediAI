@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: medisave_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - medisave_data:/app/data
+    networks:
+      - medisave_net
+    depends_on: []
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: medisave_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_ssl:/etc/nginx/ssl
+    networks:
+      - medisave_net
+    depends_on:
+      - app
+
+volumes:
+  medisave_data:
+  nginx_ssl:
+
+networks:
+  medisave_net:
+    driver: bridge

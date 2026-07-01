@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Emergency SOS — MediSave</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #F5F5F5; }
+    .sos-pulse { animation: sos-pulse 1.5s infinite; }
+    @keyframes sos-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.6); }
+      50%       { box-shadow: 0 0 0 24px rgba(220,38,38,0); }
+    }
+    .status-active     { background: #FEE2E2; color: #DC2626; }
+    .status-resolved   { background: #D1FAE5; color: #059669; }
+    .status-false_alarm { background: #FEF3C7; color: #D97706; }
+  </style>
+</head>
+<body x-data="emergencyApp()" x-init="init()">
+
+  <!-- NAV -->
+  <nav class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+      </div>
+      <span class="font-bold text-gray-900 text-lg">Emergency SOS</span>
+    </div>
+    <a href="/patient/dashboard" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+  </nav>
+
+  <div class="max-w-2xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- SOS BUTTON CARD -->
+    <div class="bg-white rounded-2xl p-8 text-center shadow-sm border border-red-100">
+      <h2 class="text-xl font-bold text-gray-900 mb-2">Emergency SOS</h2>
+      <p class="text-gray-500 text-sm mb-8">Press the button below to trigger an emergency alert. Your location will be shared with emergency services and your contacts.</p>
+
+      <!-- Big SOS Button -->
+      <div class="flex justify-center mb-8">
+        <button
+          @click="triggerSOS()"
+          :disabled="sosBusy || !!activeEmergency"
+          class="w-44 h-44 rounded-full text-white font-extrabold text-4xl shadow-2xl disabled:cursor-not-allowed transition-transform active:scale-95 focus:outline-none"
+          :class="activeEmergency ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 sos-pulse'"
+        >
+          SOS
+        </button>
+      </div>
+
+      <!-- Active alert banner -->
+      <div x-show="activeEmergency" class="bg-red-50 border border-red-200 rounded-xl p-4 text-left">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+          <span class="font-semibold text-red-700">Emergency Alert Active</span>
+        </div>
+        <p class="text-sm text-red-600 mb-1" x-text="'Location: ' + (activeEmergency?.address || 'Acquiring...')"></p>
+        <p class="text-sm text-red-600 mb-3" x-text="'Nearest hospital: ' + (activeEmergency?.nearest_hospital || 'Locating...')"></p>
+        <div class="flex gap-3">
+          <button @click="openResolveModal('resolved')" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 rounded-lg transition-colors">
+            I'm Safe
+          </button>
+          <button @click="openResolveModal('false_alarm')" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium py-2 rounded-lg transition-colors">
+            False Alarm
+          </button>
+        </div>
+      </div>
+
+      <!-- Emergency numbers -->
+      <div class="mt-6 grid grid-cols-3 gap-3 text-center">
+        <a href="tel:112" class="bg-red-50 hover:bg-red-100 rounded-xl p-3 transition-colors">
+          <div class="text-2xl font-bold text-red-600">112</div>
+          <div class="text-xs text-gray-500 mt-1">Emergency</div>
+        </a>
+        <a href="tel:08023032003" class="bg-blue-50 hover:bg-blue-100 rounded-xl p-3 transition-colors">
+          <div class="text-lg font-bold text-blue-600">LUTH</div>
+          <div class="text-xs text-gray-500 mt-1">Lagos Hospital</div>
+        </a>
+        <a href="tel:095238101" class="bg-green-50 hover:bg-green-100 rounded-xl p-3 transition-colors">
+          <div class="text-lg font-bold text-green-600">NHA</div>
+          <div class="text-xs text-gray-500 mt-1">Abuja Hospital</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- EMERGENCY CONTACTS -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="font-bold text-gray-900">Emergency Contacts</h3>
+        <button @click="openAddContact()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Contact
+        </button>
+      </div>
+
+      <div x-show="contacts.length === 0" class="text-center py-8 text-gray-400">
+        <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>
+        </svg>
+        <p class="text-sm">No emergency contacts added yet.</p>
+        <p class="text-xs mt-1">Add contacts who will be notified during an emergency.</p>
+      </div>
+
+      <div class="space-y-3">
+        <template x-for="contact in contacts" :key="contact.id">
+          <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <span class="text-lg font-bold text-red-600" x-text="contact.name.charAt(0).toUpperCase()"></span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <p class="font-semibold text-gray-900 truncate" x-text="contact.name"></p>
+                <span x-show="contact.is_primary" class="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full">Primary</span>
+              </div>
+              <p class="text-sm text-gray-500" x-text="contact.phone"></p>
+              <p class="text-xs text-gray-400" x-text="contact.relationship"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button x-show="!contact.is_primary" @click="setPrimary(contact.id)" title="Set as primary" class="text-gray-400 hover:text-red-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+              </button>
+              <button @click="openEditContact(contact)" class="text-gray-400 hover:text-blue-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button @click="deleteContact(contact.id)" class="text-gray-400 hover:text-red-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- EMERGENCY HISTORY -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm">
+      <h3 class="font-bold text-gray-900 mb-5">Emergency History</h3>
+
+      <div x-show="history.length === 0" class="text-center py-8 text-gray-400">
+        <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-sm">No emergency history yet.</p>
+      </div>
+
+      <div class="space-y-3">
+        <template x-for="item in history" :key="item.id">
+          <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-full" :class="'status-' + item.status" x-text="item.status.replace('_',' ')"></span>
+                <span class="text-xs text-gray-400" x-text="formatDate(item.created_at)"></span>
+              </div>
+              <p class="text-sm text-gray-700" x-text="item.address || 'Location not available'"></p>
+              <p class="text-xs text-gray-400 mt-1" x-show="item.nearest_hospital" x-text="'Hospital: ' + item.nearest_hospital"></p>
+              <p class="text-xs text-gray-400 mt-0.5" x-show="item.description" x-text="item.description"></p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD/EDIT CONTACT MODAL -->
+  <div x-show="contactModal.open" class="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4" x-transition>
+    <div class="bg-white rounded-2xl w-full max-w-md p-6" @click.stop>
+      <h3 class="font-bold text-gray-900 mb-5" x-text="contactModal.editing ? 'Edit Contact' : 'Add Emergency Contact'"></h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+          <input x-model="contactModal.name" type="text" placeholder="e.g. Chioma Okafor"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+          <input x-model="contactModal.phone" type="tel" placeholder="+2348012345678"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Relationship *</label>
+          <select x-model="contactModal.relationship"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+            <option value="">Select relationship</option>
+            <option value="Spouse">Spouse</option>
+            <option value="Parent">Parent</option>
+            <option value="Sibling">Sibling</option>
+            <option value="Child">Child</option>
+            <option value="Friend">Friend</option>
+            <option value="Colleague">Colleague</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input x-model="contactModal.is_primary" type="checkbox" class="w-4 h-4 accent-red-600" />
+          <span class="text-sm text-gray-700">Set as primary contact</span>
+        </label>
+      </div>
+
+      <div x-show="contactModal.error" class="mt-4 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2" x-text="contactModal.error"></div>
+
+      <div class="flex gap-3 mt-6">
+        <button @click="contactModal.open = false" class="flex-1 border border-gray-200 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
+        <button @click="saveContact()" :disabled="contactModal.busy" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-50">
+          <span x-show="!contactModal.busy" x-text="contactModal.editing ? 'Save Changes' : 'Add Contact'"></span>
+          <span x-show="contactModal.busy">Saving...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESOLVE MODAL -->
+  <div x-show="resolveModal.open" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" x-transition>
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 text-center" @click.stop>
+      <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+        :class="resolveModal.status === 'resolved' ? 'bg-green-100' : 'bg-yellow-100'">
+        <svg class="w-8 h-8" :class="resolveModal.status === 'resolved' ? 'text-green-600' : 'text-yellow-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path x-show="resolveModal.status === 'resolved'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <path x-show="resolveModal.status !== 'resolved'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+      </div>
+      <h3 class="font-bold text-gray-900 mb-2" x-text="resolveModal.status === 'resolved' ? 'Mark as Safe?' : 'Mark as False Alarm?'"></h3>
+      <p class="text-sm text-gray-500 mb-6" x-text="resolveModal.status === 'resolved' ? 'This will close the active emergency and notify your contacts that you are safe.' : 'This will cancel the emergency alert. Only do this if no emergency occurred.'"></p>
+      <div class="flex gap-3">
+        <button @click="resolveModal.open = false" class="flex-1 border border-gray-200 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50">Cancel</button>
+        <button @click="confirmResolve()" :disabled="resolveModal.busy" class="flex-1 font-medium py-3 rounded-xl text-white disabled:opacity-50 transition-colors"
+          :class="resolveModal.status === 'resolved' ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-500 hover:bg-yellow-600'">
+          <span x-show="!resolveModal.busy">Confirm</span>
+          <span x-show="resolveModal.busy">...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/v1';
+    const token = () => localStorage.getItem('ms_token');
+    const headers = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() });
+
+    function emergencyApp() {
+      return {
+        contacts: [],
+        history: [],
+        activeEmergency: null,
+        sosBusy: false,
+        contactModal: { open: false, editing: false, id: null, name: '', phone: '', relationship: '', is_primary: false, error: '', busy: false },
+        resolveModal: { open: false, status: '', busy: false },
+
+        async init() {
+          if (!token()) { window.location.href = '/login'; return; }
+          await Promise.all([this.fetchContacts(), this.fetchHistory()]);
+          this.activeEmergency = this.history.find(e => e.status === 'active') || null;
+        },
+
+        async fetchContacts() {
+          try {
+            const r = await fetch(`${API}/emergency/contacts`, { headers: headers() });
+            const d = await r.json();
+            if (d.success) this.contacts = d.data || [];
+          } catch {}
+        },
+
+        async fetchHistory() {
+          try {
+            const r = await fetch(`${API}/emergency/history`, { headers: headers() });
+            const d = await r.json();
+            if (d.success) this.history = d.data?.items || d.data || [];
+          } catch {}
+        },
+
+        async triggerSOS() {
+          if (this.sosBusy || this.activeEmergency) return;
+          if (!confirm('Trigger Emergency SOS? This will alert emergency services and your contacts.')) return;
+          this.sosBusy = true;
+
+          let lat = 6.5244, lng = 3.3792; // Lagos default
+          if (navigator.geolocation) {
+            try {
+              const pos = await new Promise((res, rej) =>
+                navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+              );
+              lat = pos.coords.latitude;
+              lng = pos.coords.longitude;
+            } catch {}
+          }
+
+          try {
+            const r = await fetch(`${API}/emergency/sos`, {
+              method: 'POST',
+              headers: headers(),
+              body: JSON.stringify({ latitude: lat, longitude: lng, description: '' })
+            });
+            const d = await r.json();
+            if (d.success) {
+              this.activeEmergency = d.data;
+              this.history.unshift(d.data);
+              alert('Emergency SOS activated! Help is on the way.');
+            } else {
+              alert(d.message || 'Failed to trigger SOS');
+            }
+          } catch {
+            alert('Network error. Please try again or call 112.');
+          } finally {
+            this.sosBusy = false;
+          }
+        },
+
+        openResolveModal(status) {
+          this.resolveModal = { open: true, status, busy: false };
+        },
+
+        async confirmResolve() {
+          if (!this.activeEmergency) return;
+          this.resolveModal.busy = true;
+          try {
+            const r = await fetch(`${API}/emergency/${this.activeEmergency.id}/resolve`, {
+              method: 'PATCH',
+              headers: headers(),
+              body: JSON.stringify({ status: this.resolveModal.status })
+            });
+            const d = await r.json();
+            if (d.success) {
+              this.resolveModal.open = false;
+              this.activeEmergency = null;
+              await this.fetchHistory();
+            } else {
+              alert(d.message || 'Failed to resolve emergency');
+            }
+          } finally {
+            this.resolveModal.busy = false;
+          }
+        },
+
+        openAddContact() {
+          this.contactModal = { open: true, editing: false, id: null, name: '', phone: '', relationship: '', is_primary: false, error: '', busy: false };
+        },
+
+        openEditContact(contact) {
+          this.contactModal = { open: true, editing: true, id: contact.id, name: contact.name, phone: contact.phone, relationship: contact.relationship, is_primary: contact.is_primary, error: '', busy: false };
+        },
+
+        async saveContact() {
+          const m = this.contactModal;
+          if (!m.name.trim() || !m.phone.trim() || !m.relationship) {
+            m.error = 'Please fill all required fields.';
+            return;
+          }
+          m.busy = true; m.error = '';
+          try {
+            const url = m.editing ? `${API}/emergency/contacts/${m.id}` : `${API}/emergency/contacts`;
+            const method = m.editing ? 'PUT' : 'POST';
+            const r = await fetch(url, {
+              method,
+              headers: headers(),
+              body: JSON.stringify({ name: m.name, phone: m.phone, relationship: m.relationship, is_primary: m.is_primary })
+            });
+            const d = await r.json();
+            if (d.success) {
+              m.open = false;
+              await this.fetchContacts();
+            } else {
+              m.error = d.message || 'Failed to save contact.';
+            }
+          } finally {
+            m.busy = false;
+          }
+        },
+
+        async setPrimary(id) {
+          try {
+            const r = await fetch(`${API}/emergency/contacts/${id}/primary`, { method: 'PATCH', headers: headers() });
+            const d = await r.json();
+            if (d.success) await this.fetchContacts();
+          } catch {}
+        },
+
+        async deleteContact(id) {
+          if (!confirm('Remove this emergency contact?')) return;
+          try {
+            const r = await fetch(`${API}/emergency/contacts/${id}`, { method: 'DELETE', headers: headers() });
+            const d = await r.json();
+            if (d.success) this.contacts = this.contacts.filter(c => c.id !== id);
+          } catch {}
+        },
+
+        formatDate(dt) {
+          return new Date(dt).toLocaleString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+      };
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Doctor Dashboard | MediSave</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', sans-serif; }
+    [x-cloak] { display: none !important; }
+
+    /* ── Sidebar nav ── */
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 14px;
+      text-decoration: none; font-size: 13.5px; font-weight: 500;
+      color: #6B7280; transition: all .18s; cursor: pointer;
+      border: none; background: none; width: 100%;
+    }
+    .nav-item:hover { background: #F9FAFB; color: #111827; }
+    .nav-item.active { background: linear-gradient(135deg,#0F9D58,#34A853); color: #fff; box-shadow: 0 4px 16px rgba(15,157,88,.3); }
+    .nav-item .icon-wrap {
+      width: 34px; height: 34px; border-radius: 10px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0; transition: all .18s;
+    }
+    .nav-item.active .icon-wrap { background: rgba(255,255,255,.2); }
+
+    /* ── Feature cards ── */
+    .feat-card {
+      display: flex; flex-direction: column; align-items: flex-start;
+      padding: 18px 16px; border-radius: 20px; text-decoration: none;
+      transition: all .2s; position: relative; overflow: hidden;
+    }
+    .feat-card:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,.12); }
+    .feat-card:active { transform: scale(.97); }
+    .feat-card .card-icon {
+      width: 44px; height: 44px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px; background: rgba(255,255,255,.25);
+    }
+    .feat-card .card-arrow {
+      position: absolute; top: 14px; right: 14px; opacity: .5;
+    }
+
+    /* ── Stat cards ── */
+    .stat-card {
+      background: #fff; border-radius: 20px; padding: 16px;
+      border: 1px solid #F3F4F6; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    }
+
+    /* ── Skeleton ── */
+    @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
+    .skeleton {
+      background: linear-gradient(90deg,#F3F4F6 25%,#E5E7EB 50%,#F3F4F6 75%);
+      background-size: 800px 100%; animation: shimmer 1.5s infinite; border-radius: 8px;
+    }
+
+    /* ── Bottom nav ── */
+    .bnav-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      flex: 1; padding: 9px 4px 6px; color: #9CA3AF; font-size: 10px;
+      font-weight: 500; background: none; border: none; cursor: pointer;
+      transition: color .15s; text-decoration: none;
+    }
+    .bnav-btn.active { color: #0F9D58; }
+
+    /* ── Toggle ── */
+    .toggle-track {
+      width: 44px; height: 24px; border-radius: 12px; position: relative;
+      transition: background .2s; cursor: pointer; flex-shrink: 0;
+    }
+    .toggle-thumb {
+      position: absolute; top: 2px; width: 20px; height: 20px;
+      background: #fff; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+      transition: transform .2s;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="doctorDashApp()" x-init="init()">
+
+<!-- ════════════════════════════════════════════════════════
+     DESKTOP  (lg+)
+════════════════════════════════════════════════════════ -->
+<div class="hidden lg:flex h-screen overflow-hidden">
+
+  <!-- ── Sidebar ── -->
+  <aside class="flex flex-col w-60 bg-white border-r border-gray-100 shrink-0 h-screen">
+
+    <!-- Brand -->
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/30">
+        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.518 3.949 1 6.818 1c1.947 0 3.876.876 5.182 2.5C13.306 1.876 15.235 1 17.182 1 20.051 1 23 3.518 23 7.191c0 4.105-5.37 8.863-11 14.402z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="font-bold text-gray-900 text-sm leading-none">MediSave</p>
+        <p class="text-xs text-gray-400 mt-0.5">Doctor Portal</p>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+
+      <a href="/doctor/dashboard" class="nav-item active">
+        <span class="icon-wrap">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+        </span>
+        Dashboard
+      </a>
+
+      <a href="/doctor/appointments" class="nav-item">
+        <span class="icon-wrap bg-blue-50">
+          <svg class="w-[18px] h-[18px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </span>
+        Appointments
+      </a>
+
+      <a href="/doctor/patients" class="nav-item">
+        <span class="icon-wrap bg-violet-50">
+          <svg class="w-[18px] h-[18px] text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </span>
+        My Patients
+      </a>
+
+      <a href="/doctor/earnings" class="nav-item">
+        <span class="icon-wrap bg-emerald-50">
+          <svg class="w-[18px] h-[18px] text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
+        Earnings
+      </a>
+
+      <a href="/doctor/profile" class="nav-item">
+        <span class="icon-wrap bg-amber-50">
+          <svg class="w-[18px] h-[18px] text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+        </span>
+        My Profile
+      </a>
+    </nav>
+
+    <!-- Availability toggle -->
+    <div class="px-3 pb-2 border-t border-gray-100 pt-3">
+      <div class="flex items-center justify-between px-2 py-2.5 rounded-xl"
+        :class="dash?.doctor?.is_available ? 'bg-emerald-50' : 'bg-gray-50'">
+        <div>
+          <p class="text-xs font-semibold" :class="dash?.doctor?.is_available ? 'text-emerald-800' : 'text-gray-600'">
+            Availability
+          </p>
+          <p class="text-xs mt-0.5" :class="dash?.doctor?.is_available ? 'text-emerald-600' : 'text-gray-400'"
+            x-text="dash?.doctor?.is_available ? 'Accepting patients' : 'Not accepting'"></p>
+        </div>
+        <button @click="toggleAvailability()"
+          class="toggle-track"
+          :style="dash?.doctor?.is_available ? 'background:#0F9D58' : 'background:#D1D5DB'">
+          <span class="toggle-thumb"
+            :style="dash?.doctor?.is_available ? 'transform:translateX(22px)' : 'transform:translateX(2px)'"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- User footer -->
+    <div class="px-3 pb-4 pt-2">
+      <div class="flex items-center gap-3 px-2 py-2">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xs shrink-0"
+          x-text="user ? (user.first_name[0]+user.last_name[0]).toUpperCase() : 'Dr'"></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-gray-900 truncate"
+            x-text="user ? 'Dr. '+user.first_name+' '+user.last_name : 'Loading…'"></p>
+          <p class="text-xs text-gray-400" x-text="dash?.doctor?.specialty || 'Doctor'"></p>
+        </div>
+        <button @click="logout()" class="text-gray-300 hover:text-red-400 transition p-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Desktop main ── -->
+  <main class="flex-1 overflow-y-auto bg-gray-50">
+    <div class="max-w-4xl mx-auto px-8 py-7 space-y-7">
+
+      <!-- Pending notice -->
+      <template x-if="dash?.doctor?.status === 'pending'">
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          <div>
+            <p class="text-sm font-bold text-amber-800">Account pending verification</p>
+            <p class="text-xs text-amber-700 mt-0.5">Our team is reviewing your license. You'll be notified once verified — usually within 24 hours.</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- Hero -->
+      <div class="bg-gradient-to-br from-primary via-secondary to-emerald-400 rounded-3xl p-7 text-white relative overflow-hidden">
+        <div class="absolute -right-6 -top-6 w-40 h-40 bg-white/10 rounded-full"></div>
+        <div class="absolute right-16 bottom-0 w-24 h-24 bg-white/10 rounded-full translate-y-8"></div>
+        <div class="absolute right-4 top-4 w-14 h-14 bg-white/10 rounded-full"></div>
+        <div class="relative flex items-start justify-between">
+          <div>
+            <p class="text-green-100 text-sm font-medium" x-text="greeting()"></p>
+            <h2 class="text-3xl font-bold mt-1 tracking-tight"
+              x-text="user ? 'Dr. '+user.first_name+' '+user.last_name : '…'"></h2>
+            <p class="text-green-100 text-sm mt-1.5"
+              x-text="(dash?.doctor?.specialty||'Doctor') + (dash?.doctor?.hospital ? ' · '+dash.doctor.hospital : '')"></p>
+            <div class="flex items-center gap-3 mt-5">
+              <a href="/doctor/appointments" class="px-5 py-2.5 bg-white text-primary text-sm font-bold rounded-xl hover:shadow-lg transition">
+                Today's Schedule
+              </a>
+              <a href="/doctor/patients" class="px-5 py-2.5 bg-white/20 text-white text-sm font-semibold rounded-xl hover:bg-white/30 transition backdrop-blur-sm">
+                My Patients
+              </a>
+            </div>
+          </div>
+          <!-- Verification badge -->
+          <template x-if="dash?.doctor?.status === 'verified'">
+            <span class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold rounded-full border border-white/30">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              Verified
+            </span>
+          </template>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="stat-card">
+          <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-6 w-24 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-xl font-bold text-gray-900" x-text="'₦'+fmt(dash?.wallet_balance)"></p></template>
+          <p class="text-xs text-gray-400 mt-0.5 font-medium">Wallet Balance</p>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-6 w-10 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-xl font-bold text-gray-900" x-text="dash?.today_appointments||0"></p></template>
+          <p class="text-xs text-gray-400 mt-0.5 font-medium">Today's Appts</p>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-6 w-12 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-xl font-bold text-gray-900" x-text="dash?.total_consultations||0"></p></template>
+          <p class="text-xs text-gray-400 mt-0.5 font-medium">Consultations</p>
+        </div>
+        <div class="stat-card">
+          <div class="w-10 h-10 bg-yellow-50 rounded-xl flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-6 w-10 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-xl font-bold text-gray-900" x-text="dash?.rating ? dash.rating.toFixed(1) : '—'"></p></template>
+          <p class="text-xs text-gray-400 mt-0.5 font-medium">Rating</p>
+        </div>
+      </div>
+
+      <!-- Quick access grid -->
+      <div>
+        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Quick Access</h3>
+        <div class="grid grid-cols-4 gap-4">
+
+          <a href="/doctor/appointments" class="feat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+            <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+            <p class="text-sm font-bold">Appointments</p>
+            <p class="text-xs text-blue-100 mt-0.5">Schedule &amp; manage</p>
+          </a>
+
+          <a href="/doctor/patients" class="feat-card bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+            <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+            <p class="text-sm font-bold">My Patients</p>
+            <p class="text-xs text-purple-200 mt-0.5">View history</p>
+          </a>
+
+          <a href="/doctor/earnings" class="feat-card bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+            <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+            <p class="text-sm font-bold">Earnings</p>
+            <p class="text-xs text-green-100 mt-0.5">Wallet &amp; payouts</p>
+          </a>
+
+          <a href="/doctor/profile" class="feat-card bg-gradient-to-br from-amber-400 to-orange-500 text-white">
+            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+            <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
+            <p class="text-sm font-bold">My Profile</p>
+            <p class="text-xs text-orange-100 mt-0.5">Update &amp; settings</p>
+          </a>
+        </div>
+      </div>
+
+      <!-- Schedule + Profile completeness -->
+      <div class="grid lg:grid-cols-5 gap-4">
+
+        <!-- Today's schedule -->
+        <div class="lg:col-span-3 bg-white rounded-3xl border border-gray-100 p-6">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="font-bold text-gray-900">Today's Schedule</h3>
+              <p class="text-xs text-gray-400 mt-0.5" x-text="todayDate()"></p>
+            </div>
+            <a href="/doctor/appointments" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+              View all <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+          <template x-if="loading">
+            <div class="space-y-3">
+              <div class="skeleton h-14 w-full rounded-xl"></div>
+              <div class="skeleton h-14 w-full rounded-xl"></div>
+            </div>
+          </template>
+          <template x-if="!loading && (!dash?.today_appointments || dash.today_appointments === 0)">
+            <div class="flex flex-col items-center py-10">
+              <div class="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center mb-3">
+                <svg class="w-7 h-7 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <p class="text-sm font-semibold text-gray-400">No appointments today</p>
+              <p class="text-xs text-gray-300 mt-1">Enjoy your free time, doctor 🌿</p>
+            </div>
+          </template>
+          <template x-if="!loading && dash?.today_appointments > 0">
+            <div class="text-center py-8">
+              <p class="text-3xl font-bold text-primary" x-text="dash.today_appointments"></p>
+              <p class="text-sm text-gray-400 mt-1">appointments scheduled</p>
+              <a href="/doctor/appointments" class="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary hover:underline">
+                View schedule →
+              </a>
+            </div>
+          </template>
+        </div>
+
+        <!-- Profile completeness -->
+        <div class="lg:col-span-2 bg-white rounded-3xl border border-gray-100 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-bold text-gray-900">Profile</h3>
+            <span class="text-sm font-bold text-primary" x-text="profileScore()+'%'"></span>
+          </div>
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
+            <div class="h-full rounded-full transition-all duration-700"
+              :class="profileScore() >= 80 ? 'bg-primary' : profileScore() >= 50 ? 'bg-amber-400' : 'bg-red-400'"
+              :style="'width:'+profileScore()+'%'"></div>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                :class="dash?.doctor?.bio ? 'bg-primary/10' : 'bg-gray-100'">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"
+                  :class="dash?.doctor?.bio ? 'text-primary' : 'text-gray-300'">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="dash?.doctor?.bio ? 'M5 13l4 4L19 7' : 'M12 5v14M5 12h14'"/>
+                </svg>
+              </div>
+              <span class="text-xs" :class="dash?.doctor?.bio ? 'text-gray-600' : 'text-gray-400'">Bio / About me</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                :class="dash?.doctor?.education ? 'bg-primary/10' : 'bg-gray-100'">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"
+                  :class="dash?.doctor?.education ? 'text-primary' : 'text-gray-300'">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="dash?.doctor?.education ? 'M5 13l4 4L19 7' : 'M12 5v14M5 12h14'"/>
+                </svg>
+              </div>
+              <span class="text-xs" :class="dash?.doctor?.education ? 'text-gray-600' : 'text-gray-400'">Education</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+              <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                :class="dash?.doctor?.languages ? 'bg-primary/10' : 'bg-gray-100'">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"
+                  :class="dash?.doctor?.languages ? 'text-primary' : 'text-gray-300'">
+                  <path stroke-linecap="round" stroke-linejoin="round" :d="dash?.doctor?.languages ? 'M5 13l4 4L19 7' : 'M12 5v14M5 12h14'"/>
+                </svg>
+              </div>
+              <span class="text-xs" :class="dash?.doctor?.languages ? 'text-gray-600' : 'text-gray-400'">Languages</span>
+            </div>
+          </div>
+          <a href="/doctor/profile"
+            class="mt-4 flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl bg-accent text-primary text-xs font-bold hover:bg-green-100 transition">
+            Complete profile →
+          </a>
+        </div>
+      </div>
+
+      <!-- Earnings strip -->
+      <div class="bg-white rounded-3xl border border-gray-100 p-6">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="font-bold text-gray-900">Earnings Overview</h3>
+          <a href="/doctor/earnings" class="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+            Details <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl text-center border border-emerald-100">
+            <p class="text-lg font-bold text-gray-900" x-text="'₦'+fmt(dash?.total_earnings)"></p>
+            <p class="text-xs text-gray-400 mt-1 font-medium">Total Earned</p>
+          </div>
+          <div class="p-4 bg-gradient-to-br from-blue-50 to-sky-50 rounded-2xl text-center border border-blue-100">
+            <p class="text-lg font-bold text-gray-900" x-text="'₦'+fmt(dash?.wallet_balance)"></p>
+            <p class="text-xs text-gray-400 mt-1 font-medium">Available</p>
+          </div>
+          <div class="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl text-center border border-amber-100">
+            <p class="text-lg font-bold text-gray-900">₦0</p>
+            <p class="text-xs text-gray-400 mt-1 font-medium">In Escrow</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     MOBILE  (< lg)
+════════════════════════════════════════════════════════ -->
+<div class="lg:hidden flex flex-col min-h-screen pb-20">
+
+  <!-- Top bar -->
+  <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-100 px-4 pt-3 pb-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-md shadow-primary/30">
+          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.518 3.949 1 6.818 1c1.947 0 3.876.876 5.182 2.5C13.306 1.876 15.235 1 17.182 1 20.051 1 23 3.518 23 7.191c0 4.105-5.37 8.863-11 14.402z"/>
+          </svg>
+        </div>
+        <div>
+          <p class="font-bold text-gray-900 text-sm leading-none">MediSave</p>
+          <p class="text-xs text-gray-400">Doctor Portal</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <!-- Availability quick toggle -->
+        <button @click="toggleAvailability()"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition"
+          :class="dash?.doctor?.is_available ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'">
+          <span class="w-1.5 h-1.5 rounded-full"
+            :class="dash?.doctor?.is_available ? 'bg-emerald-500' : 'bg-gray-400'"></span>
+          <span x-text="dash?.doctor?.is_available ? 'Online' : 'Offline'"></span>
+        </button>
+        <a href="/doctor/profile"
+          class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xs"
+          x-text="user ? (user.first_name[0]+user.last_name[0]).toUpperCase() : 'Dr'"></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Scrollable content -->
+  <div class="flex-1 overflow-y-auto px-4 pt-5 space-y-5">
+
+    <!-- Pending notice -->
+    <template x-if="dash?.doctor?.status === 'pending'">
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+        <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <p class="text-xs text-amber-800 font-medium">Account pending verification — usually within 24 hours.</p>
+      </div>
+    </template>
+
+    <!-- Hero banner -->
+    <div class="bg-gradient-to-br from-primary via-secondary to-emerald-400 rounded-3xl p-5 text-white relative overflow-hidden">
+      <div class="absolute -right-4 -top-4 w-28 h-28 bg-white/10 rounded-full"></div>
+      <div class="absolute right-8 bottom-0 w-16 h-16 bg-white/10 rounded-full translate-y-6"></div>
+      <div class="relative flex items-start justify-between">
+        <div>
+          <p class="text-green-100 text-xs font-medium" x-text="greeting()"></p>
+          <h2 class="text-xl font-bold mt-0.5 tracking-tight"
+            x-text="user ? 'Dr. '+user.first_name : 'Doctor'"></h2>
+          <p class="text-green-100 text-xs mt-1"
+            x-text="dash?.doctor?.specialty || 'Doctor'"></p>
+          <div class="flex gap-2 mt-4">
+            <a href="/doctor/appointments" class="px-4 py-2 bg-white text-primary text-xs font-bold rounded-xl">Schedule</a>
+            <a href="/doctor/patients" class="px-4 py-2 bg-white/20 text-white text-xs font-semibold rounded-xl">Patients</a>
+          </div>
+        </div>
+        <template x-if="dash?.doctor?.status === 'verified'">
+          <span class="shrink-0 flex items-center gap-1 px-2 py-1 bg-white/20 text-white text-xs font-semibold rounded-full">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Verified
+          </span>
+        </template>
+      </div>
+    </div>
+
+    <!-- Stats row (scrollable) -->
+    <div class="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style="scrollbar-width:none">
+      <div class="stat-card shrink-0 w-36">
+        <div class="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mb-2">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+        </div>
+        <template x-if="loading"><div class="skeleton h-5 w-20 mb-1"></div></template>
+        <template x-if="!loading"><p class="text-sm font-bold text-gray-900" x-text="'₦'+fmt(dash?.wallet_balance)"></p></template>
+        <p class="text-xs text-gray-400 mt-0.5">Wallet</p>
+      </div>
+      <div class="stat-card shrink-0 w-28">
+        <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <template x-if="loading"><div class="skeleton h-5 w-8 mb-1"></div></template>
+        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.today_appointments||0"></p></template>
+        <p class="text-xs text-gray-400 mt-0.5">Today</p>
+      </div>
+      <div class="stat-card shrink-0 w-28">
+        <div class="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center mb-2">
+          <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <template x-if="loading"><div class="skeleton h-5 w-10 mb-1"></div></template>
+        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.total_consultations||0"></p></template>
+        <p class="text-xs text-gray-400 mt-0.5">Consults</p>
+      </div>
+      <div class="stat-card shrink-0 w-24">
+        <div class="w-8 h-8 bg-yellow-50 rounded-xl flex items-center justify-center mb-2">
+          <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+        </div>
+        <template x-if="loading"><div class="skeleton h-5 w-8 mb-1"></div></template>
+        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.rating ? dash.rating.toFixed(1) : '—'"></p></template>
+        <p class="text-xs text-gray-400 mt-0.5">Rating</p>
+      </div>
+    </div>
+
+    <!-- Feature cards -->
+    <div>
+      <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Access</h3>
+      <div class="grid grid-cols-2 gap-3">
+
+        <a href="/doctor/appointments" class="feat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+          <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
+          <p class="text-sm font-bold">Appointments</p>
+          <p class="text-xs text-blue-100 mt-0.5">Schedule &amp; manage</p>
+        </a>
+
+        <a href="/doctor/patients" class="feat-card bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+          <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+          <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+          <p class="text-sm font-bold">My Patients</p>
+          <p class="text-xs text-purple-200 mt-0.5">View history</p>
+        </a>
+
+        <a href="/doctor/earnings" class="feat-card bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+          <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+          <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <p class="text-sm font-bold">Earnings</p>
+          <p class="text-xs text-green-100 mt-0.5">Wallet &amp; payouts</p>
+        </a>
+
+        <a href="/doctor/profile" class="feat-card bg-gradient-to-br from-amber-400 to-orange-500 text-white">
+          <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+          <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
+          <p class="text-sm font-bold">My Profile</p>
+          <p class="text-xs text-orange-100 mt-0.5">Update &amp; settings</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Earnings mini strip -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-bold text-gray-900">Earnings</p>
+        <a href="/doctor/earnings" class="text-xs font-semibold text-primary hover:underline">Details →</a>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="p-3 bg-emerald-50 rounded-xl text-center">
+          <p class="text-base font-bold text-gray-900" x-text="'₦'+fmt(dash?.total_earnings)"></p>
+          <p class="text-xs text-gray-400 mt-0.5">Total Earned</p>
+        </div>
+        <div class="p-3 bg-blue-50 rounded-xl text-center">
+          <p class="text-base font-bold text-gray-900" x-text="'₦'+fmt(dash?.wallet_balance)"></p>
+          <p class="text-xs text-gray-400 mt-0.5">Available</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile completeness pill -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 mb-2">
+      <div class="relative w-14 h-14 shrink-0">
+        <svg class="w-14 h-14 -rotate-90" viewBox="0 0 36 36">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F3F4F6" stroke-width="3.5"/>
+          <circle cx="18" cy="18" r="15.9" fill="none"
+            :stroke="profileScore() >= 80 ? '#0F9D58' : profileScore() >= 50 ? '#F59E0B' : '#EF4444'"
+            stroke-width="3.5" stroke-linecap="round"
+            :stroke-dasharray="profileScore()+',100'"
+            style="transition:stroke-dasharray 1s ease"/>
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <span class="text-sm font-bold text-gray-900" x-text="profileScore()+'%'"></span>
+        </div>
+      </div>
+      <div class="flex-1">
+        <p class="text-xs text-gray-400 font-medium">Profile Completeness</p>
+        <p class="text-sm font-bold text-gray-900 mt-0.5"
+          x-text="profileScore() >= 80 ? 'Looking great!' : profileScore() >= 50 ? 'Almost there' : 'Needs attention'"></p>
+        <p class="text-xs text-gray-400 mt-0.5">Complete your profile to attract more patients</p>
+      </div>
+      <a href="/doctor/profile" class="shrink-0 w-8 h-8 rounded-xl bg-accent flex items-center justify-center">
+        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <nav class="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100"
+    style="padding-bottom:env(safe-area-inset-bottom)">
+    <div class="flex">
+      <a href="/doctor/dashboard" class="bnav-btn active">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        Home
+      </a>
+      <a href="/doctor/appointments" class="bnav-btn">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Schedule
+      </a>
+      <a href="/doctor/patients" class="bnav-btn">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Patients
+      </a>
+      <a href="/doctor/earnings" class="bnav-btn">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Earnings
+      </a>
+      <a href="/doctor/profile" class="bnav-btn">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        Profile
+      </a>
+    </div>
+  </nav>
+
+</div>
+
+<script>
+function doctorDashApp() {
+  return {
+    user: null, dash: null, loading: true,
+
+    async init() {
+      const token = localStorage.getItem('ms_token');
+      if (!token) { window.location.href = '/login'; return; }
+      const stored = localStorage.getItem('ms_user');
+      if (stored) {
+        this.user = JSON.parse(stored);
+        if (this.user.role !== 'doctor') { window.location.href = '/patient/dashboard'; return; }
+      }
+      await this.loadDashboard(token);
+    },
+
+    async loadDashboard(token) {
+      try {
+        const res = await fetch('/api/v1/doctors/me/dashboard', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        const data = await res.json();
+        if (data.success) {
+          this.dash = data.data;
+          if (data.data.doctor?.user) this.user = data.data.doctor.user;
+        }
+      } catch(e) {}
+      finally { this.loading = false; }
+    },
+
+    async toggleAvailability() {
+      if (!this.dash?.doctor) return;
+      const newVal = !this.dash.doctor.is_available;
+      try {
+        const token = localStorage.getItem('ms_token');
+        const res = await fetch('/api/v1/doctors/me/availability', {
+          method: 'PATCH',
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_available: newVal })
+        });
+        const data = await res.json();
+        if (data.success) this.dash.doctor.is_available = newVal;
+      } catch(e) {}
+    },
+
+    profileScore() {
+      if (!this.dash?.doctor) return 0;
+      const d = this.dash.doctor;
+      let s = 60;
+      if (d.bio) s += 15;
+      if (d.education) s += 15;
+      if (d.languages) s += 10;
+      return Math.min(s, 100);
+    },
+
+    greeting() {
+      const h = new Date().getHours();
+      return h < 12 ? 'Good morning,' : h < 17 ? 'Good afternoon,' : 'Good evening,';
+    },
+
+    todayDate() {
+      return new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long' });
+    },
+
+    fmt(n) { return (n || 0).toLocaleString('en-NG'); },
+
+    logout() { localStorage.clear(); window.location.href = '/login'; }
+  };
+}
+</script>
+</body>
+</html>

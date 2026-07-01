@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Video Consultation | MediSave</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853'}}}}</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;margin:0;font-family:'Inter',sans-serif;background:#0a0a0a;overflow:hidden;}
+    [x-cloak]{display:none!important;}
+
+    #jitsi-container { position:absolute; inset:0; width:100%; height:100%; }
+    #jitsi-container iframe { width:100%; height:100%; border:none; }
+
+    .overlay-screen {
+      position:fixed; inset:0; z-index:50;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:linear-gradient(135deg,#0a0a0a 0%,#111827 100%);
+    }
+
+    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:.75}}
+    .pulse{animation:pulse 2s ease-in-out infinite;}
+
+    @keyframes dot{0%,80%,100%{transform:scale(.55);opacity:.35}40%{transform:scale(1);opacity:1}}
+    .dot{width:9px;height:9px;border-radius:50%;background:#0F9D58;display:inline-block;}
+    .dot:nth-child(1){animation:dot 1.4s 0s infinite ease-in-out}
+    .dot:nth-child(2){animation:dot 1.4s .2s infinite ease-in-out}
+    .dot:nth-child(3){animation:dot 1.4s .4s infinite ease-in-out}
+
+    #topbar{
+      position:fixed; top:0; left:0; right:0; z-index:40;
+      display:flex; align-items:center; justify-between;
+      padding:14px 18px;
+      background:linear-gradient(to bottom,rgba(0,0,0,.75) 0%,transparent 100%);
+      pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+<!-- ─── Loading / Waiting screen ─────────────────────────────────────────── -->
+<div id="waiting-screen" class="overlay-screen">
+  <div style="text-align:center">
+    <!-- Avatar -->
+    <div id="peer-avatar" class="pulse" style="
+      width:112px;height:112px;border-radius:50%;margin:0 auto 20px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:2.2rem;font-weight:700;color:#fff;
+      background:linear-gradient(135deg,#0F9D58,#34A853);
+      box-shadow:0 0 0 8px rgba(15,157,88,.15);">
+      <span id="peer-initials">?</span>
+    </div>
+    <p id="peer-name" style="color:#fff;font-size:1.25rem;font-weight:700;margin-bottom:6px;">Connecting…</p>
+    <p id="status-label" style="color:#9CA3AF;font-size:.875rem;margin-bottom:20px;">Setting up your secure consultation</p>
+    <div style="display:flex;gap:6px;justify-content:center;">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+    <div id="denied-msg" style="display:none;margin-top:24px;max-width:320px;padding:0 16px;">
+      <div style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:16px;">
+        <p style="color:#FCA5A5;font-size:.875rem;font-weight:600;margin-bottom:6px;">Camera / Microphone Blocked</p>
+        <p style="color:#9CA3AF;font-size:.8rem;line-height:1.5;">Allow access in your browser settings, then click Retry.</p>
+      </div>
+      <button onclick="location.reload()" style="
+        margin-top:14px;padding:12px 28px;background:#0F9D58;color:#fff;
+        border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;">
+        Retry
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Jitsi container ───────────────────────────────────────────────────── -->
+<div id="jitsi-container" style="display:none;"></div>
+
+<!-- ─── Top brand bar (shown once call starts) ───────────────────────────── -->
+<div id="topbar" style="display:none;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;">
+      <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.518 3.949 1 6.818 1c1.947 0 3.876.876 5.182 2.5C13.306 1.876 15.235 1 17.182 1 20.051 1 23 3.518 23 7.191c0 4.105-5.37 8.863-11 14.402z"/></svg>
+    </div>
+    <div>
+      <p id="topbar-name" style="color:#fff;font-size:.85rem;font-weight:700;line-height:1.2;"></p>
+      <p style="color:#86EFAC;font-size:.72rem;font-weight:500;">MediSave Secure Consultation</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Call ended screen ─────────────────────────────────────────────────── -->
+<div id="ended-screen" class="overlay-screen" style="display:none;">
+  <div style="text-align:center;padding:0 24px;">
+    <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+      <svg width="36" height="36" fill="#9CA3AF" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+    </div>
+    <p style="color:#fff;font-size:1.5rem;font-weight:700;margin-bottom:8px;">Consultation Ended</p>
+    <p id="call-duration" style="color:#9CA3AF;font-size:.875rem;margin-bottom:32px;"></p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button id="btn-back" style="
+        padding:12px 24px;background:rgba(255,255,255,.1);color:#fff;
+        border:1px solid rgba(255,255,255,.15);border-radius:12px;
+        font-weight:600;font-size:.9rem;cursor:pointer;" onclick="goBack()">
+        Back to Appointments
+      </button>
+      <button style="
+        padding:12px 24px;background:#0F9D58;color:#fff;
+        border:none;border-radius:12px;
+        font-weight:700;font-size:.9rem;cursor:pointer;" onclick="location.reload()">
+        Rejoin Call
+      </button>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<!-- Jitsi Meet External API -->
+<script src="https://meet.jit.si/external_api.js"></script>
+<script>
+(async function() {
+  const token = localStorage.getItem('ms_token');
+  const userRaw = localStorage.getItem('ms_user');
+  if (!token) { window.location.href = '/login'; return; }
+
+  // ─── Parse appointment ID from URL (/consultation/:id/call) ─────────────
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const apptID = pathParts[1] || '0';
+
+  // ─── State ───────────────────────────────────────────────────────────────
+  let peerName = 'Connecting…';
+  let peerInitials = '?';
+  let myDisplayName = 'Me';
+  let callStartTime = null;
+  let durationInterval = null;
+
+  // ─── Fetch appointment to get real names ─────────────────────────────────
+  try {
+    const res = await fetch(`/api/v1/appointments/${apptID}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (res.ok) {
+      const { data } = await res.json();
+      const user = userRaw ? JSON.parse(userRaw) : {};
+      const role = user.role || 'patient';
+
+      if (role === 'patient') {
+        const d = data?.doctor?.user || {};
+        peerName = d.first_name ? `Dr. ${d.first_name} ${d.last_name}` : 'Your Doctor';
+        peerInitials = d.first_name ? `${d.first_name[0]}${d.last_name[0]}` : 'Dr';
+        myDisplayName = data?.patient?.user?.first_name
+          ? `${data.patient.user.first_name} ${data.patient.user.last_name}`
+          : (user.first_name ? `${user.first_name} ${user.last_name}` : 'Patient');
+      } else {
+        const p = data?.patient?.user || {};
+        peerName = p.first_name ? `${p.first_name} ${p.last_name}` : 'Patient';
+        peerInitials = p.first_name ? `${p.first_name[0]}${p.last_name[0]}` : 'P';
+        myDisplayName = data?.doctor?.user?.first_name
+          ? `Dr. ${data.doctor.user.first_name} ${data.doctor.user.last_name}`
+          : (user.first_name ? `Dr. ${user.first_name} ${user.last_name}` : 'Doctor');
+      }
+    }
+  } catch(_) {}
+
+  // Update waiting screen with real names
+  document.getElementById('peer-name').textContent = peerName;
+  document.getElementById('peer-initials').textContent = peerInitials;
+  document.getElementById('status-label').textContent = 'Requesting camera & microphone…';
+
+  // ─── Request permissions ──────────────────────────────────────────────────
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    stream.getTracks().forEach(t => t.stop()); // just checking permission
+  } catch(e) {
+    document.getElementById('status-label').textContent = 'Camera or microphone not available';
+    document.getElementById('denied-msg').style.display = 'block';
+    document.querySelector('.dot').parentElement.style.display = 'none';
+    return;
+  }
+
+  document.getElementById('status-label').textContent = `Joining consultation with ${peerName}…`;
+
+  // ─── Launch Jitsi ─────────────────────────────────────────────────────────
+  // Room name is stable per appointment — both sides generate same name
+  const roomName = `medisave-consultation-${apptID}-secure`;
+
+  const container = document.getElementById('jitsi-container');
+
+  const api = new JitsiMeetExternalAPI('meet.jit.si', {
+    roomName,
+    parentNode: container,
+    userInfo: {
+      displayName: myDisplayName,
+    },
+    configOverwrite: {
+      startWithAudioMuted: false,
+      startWithVideoMuted: false,
+      enableWelcomePage: false,
+      prejoinPageEnabled: false,
+      disableDeepLinking: true,
+      enableClosePage: false,
+      defaultLanguage: 'en',
+      toolbarButtons: [
+        'microphone', 'camera', 'chat', 'desktop', 'fullscreen',
+        'fodeviceselection', 'hangup', 'participants-pane', 'raisehand',
+        'tileview', 'toggle-camera', 'videoquality'
+      ],
+      subject: `MediSave Consultation`,
+    },
+    interfaceConfigOverwrite: {
+      SHOW_JITSI_WATERMARK: false,
+      SHOW_WATERMARK_FOR_GUESTS: false,
+      SHOW_BRAND_WATERMARK: false,
+      BRAND_WATERMARK_LINK: '',
+      SHOW_POWERED_BY: false,
+      APP_NAME: 'MediSave',
+      NATIVE_APP_NAME: 'MediSave',
+      DEFAULT_BACKGROUND: '#111827',
+      HIDE_INVITE_MORE_HEADER: true,
+      DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
+      MOBILE_APP_PROMO: false,
+    },
+  });
+
+  // ─── Jitsi events ─────────────────────────────────────────────────────────
+  api.on('videoConferenceJoined', () => {
+    callStartTime = Date.now();
+    document.getElementById('waiting-screen').style.display = 'none';
+    container.style.display = 'block';
+    document.getElementById('topbar').style.display = 'flex';
+    document.getElementById('topbar-name').textContent = peerName;
+  });
+
+  api.on('videoConferenceLeft', () => {
+    container.style.display = 'none';
+    document.getElementById('topbar').style.display = 'none';
+    const secs = callStartTime ? Math.floor((Date.now() - callStartTime) / 1000) : 0;
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    document.getElementById('call-duration').textContent = `Duration: ${m}:${s}`;
+    document.getElementById('ended-screen').style.display = 'flex';
+  });
+
+  api.on('readyToClose', () => {
+    api.dispose();
+  });
+
+})();
+
+function goBack() {
+  const user = JSON.parse(localStorage.getItem('ms_user') || '{}');
+  window.location.href = user.role === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
+}
+</script>
+</body>
+</html>
