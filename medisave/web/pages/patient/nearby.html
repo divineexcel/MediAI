@@ -180,8 +180,8 @@
         async getLocation() {
           this.locationLabel = 'Acquiring your location...';
           if (!navigator.geolocation) {
-            this.locationLabel = 'Geolocation not supported. Using Lagos default.';
-            this.lat = 6.5244; this.lng = 3.3792;
+            this.locationLabel = 'Geolocation not supported. Using Abuja default.';
+            this.lat = 9.0579; this.lng = 7.4951;
             return;
           }
           try {
@@ -193,8 +193,8 @@
             this.locationLabel = `Your location (${this.lat.toFixed(4)}, ${this.lng.toFixed(4)})`;
             await this.search();
           } catch {
-            this.lat = 6.5244; this.lng = 3.3792;
-            this.locationLabel = 'Using Lagos default (location unavailable)';
+            this.lat = 9.0579; this.lng = 7.4951;
+            this.locationLabel = 'Using Abuja default (location unavailable)';
             await this.search();
           }
         },

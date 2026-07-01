@@ -28,7 +28,9 @@ type AppConfig struct {
 }
 
 type DatabaseConfig struct {
-	Path string
+	Driver string
+	Path   string
+	URL    string
 }
 
 type JWTConfig struct {
@@ -88,7 +90,9 @@ func Load() *Config {
 			URL:  getEnv("APP_URL", "http://localhost:8080"),
 		},
 		Database: DatabaseConfig{
-			Path: getEnv("DB_PATH", "./data/medisave.db"),
+			Driver: getEnv("DB_DRIVER", "sqlite"),
+			Path:   getEnv("DB_PATH", "./data/medisave.db"),
+			URL:    getEnv("DB_URL", ""),
 		},
 		JWT: JWTConfig{
 			AccessSecret:      getEnv("JWT_ACCESS_SECRET", ""),

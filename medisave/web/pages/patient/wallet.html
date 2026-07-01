@@ -407,7 +407,7 @@ function walletApp() {
         const res = await fetch('/api/v1/wallet/deposit/initialize', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + localStorage.getItem('ms_token'), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: this.depositForm.amount, email: JSON.parse(localStorage.getItem('ms_user')||'{}').email || '' })
+          body: JSON.stringify({ amount: this.depositForm.amount })
         });
         const data = await res.json();
         if (data.success) {

@@ -4,7 +4,6 @@ import "github.com/medisave/app/internal/domain/entity"
 
 type DepositInitRequest struct {
 	Amount float64 `json:"amount" validate:"required,min=100"`
-	Email  string  `json:"email"  validate:"required,email"`
 }
 
 type DepositVerifyRequest struct {

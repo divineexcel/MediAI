@@ -20,6 +20,7 @@ type TransactionRepository interface {
 	FindByID(ctx context.Context, id uint) (*entity.Transaction, error)
 	FindByReference(ctx context.Context, ref string) (*entity.Transaction, error)
 	ListByWalletID(ctx context.Context, walletID uint, p pagination.Params) ([]*entity.Transaction, int64, error)
+	Update(ctx context.Context, tx *entity.Transaction) error
 	UpdateStatus(ctx context.Context, txID uint, status entity.TransactionStatus) error
 	CountAll(ctx context.Context) (int64, error)
 	ListAll(ctx context.Context, p pagination.Params) ([]*entity.Transaction, int64, error)

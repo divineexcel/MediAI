@@ -1,6 +1,10 @@
 package migrations
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+
+	"github.com/medisave/app/internal/domain/entity"
+)
 
 // migration001InitialSchema creates every table in dependency order.
 // Foreign keys are enforced via SQLite PRAGMA foreign_keys=ON (set at connect time).
@@ -14,6 +18,29 @@ func migration001InitialSchema() Migration {
 }
 
 func up001(db *gorm.DB) error {
+	if db.Dialector.Name() == "postgres" {
+		return db.AutoMigrate(
+			&entity.User{},
+			&entity.Patient{},
+			&entity.Doctor{},
+			&entity.Wallet{},
+			&entity.Transaction{},
+			&entity.Appointment{},
+			&entity.Consultation{},
+			&entity.ConsultationMessage{},
+			&entity.MedicalRecord{},
+			&entity.Prescription{},
+			&entity.AIConversation{},
+			&entity.AIMessage{},
+			&entity.Emergency{},
+			&entity.EmergencyContact{},
+			&entity.MedicationReminder{},
+			&entity.ReminderLog{},
+			&entity.HealthSavingsGoal{},
+			&entity.Notification{},
+			&entity.Review{},
+		)
+	}
 	statements := []string{
 		// ─── USERS ──────────────────────────────────────────────────
 		`CREATE TABLE IF NOT EXISTS users (
@@ -96,7 +123,7 @@ func up001(db *gorm.DB) error {
 			wallet_id         INTEGER NOT NULL REFERENCES wallets(id),
 			type              TEXT    NOT NULL
 			                  CHECK(type IN ('deposit','withdrawal','payment','refund',
-			                                 'escrow_hold','escrow_release','savings')),
+			                                 'consultation_credit','savings')),
 			amount            REAL    NOT NULL CHECK(amount > 0),
 			balance_before    REAL    NOT NULL,
 			balance_after     REAL    NOT NULL,

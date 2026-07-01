@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/medisave/app/config"
+	"github.com/medisave/app/internal/bootstrap"
 	"github.com/medisave/app/internal/infrastructure/database"
 	"github.com/medisave/app/internal/infrastructure/database/seed"
 	"github.com/medisave/app/internal/presentation/http/router"
@@ -29,7 +30,7 @@ func main() {
 	)
 
 	// Database
-	db, err := database.Connect(cfg.Database.Path)
+	db, err := database.Connect(&cfg.Database)
 	if err != nil {
 		logger.Fatal("failed to connect to database", zap.Error(err))
 	}
@@ -56,7 +57,7 @@ func main() {
 	r := router.New(cfg, jwtManager)
 
 	// Register all module routes
-	RegisterRoutes(r, db, cfg, jwtManager)
+	bootstrap.RegisterRoutes(r, db, cfg, jwtManager)
 
 	// HTTP server
 	srv := &http.Server{

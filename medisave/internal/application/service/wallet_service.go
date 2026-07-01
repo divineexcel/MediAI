@@ -91,15 +91,25 @@ func (s *walletService) InitializeDeposit(ctx context.Context, userID uint, emai
 	}
 
 	reference := utils.GenerateReference("DEP")
-	amountKobo := int64(req.Amount * 100) // convert NGN to kobo
 
-	data, err := s.paystack.InitializeTransaction(&paystack.InitTransactionReq{
-		Email:     email,
-		Amount:    amountKobo,
-		Reference: reference,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("payment gateway error: %w", err)
+	var authURL, accessCode string
+	if s.paystack.IsDummy() {
+		// Mock deposit initialization for development/sandbox
+		authURL = "/patient/wallet"
+		accessCode = "mock_access_code_" + reference
+	} else {
+		amountKobo := int64(req.Amount * 100) // convert NGN to kobo
+		data, err := s.paystack.InitializeTransaction(&paystack.InitTransactionReq{
+			Email:     email,
+			Amount:    amountKobo,
+			Reference: reference,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("payment gateway error: %w", err)
+		}
+		authURL = data.AuthorizationURL
+		accessCode = data.AccessCode
+		reference = data.Reference
 	}
 
 	// Record as a pending transaction
@@ -112,16 +122,16 @@ func (s *walletService) InitializeDeposit(ctx context.Context, userID uint, emai
 		BalanceAfter:  wallet.Balance, // will be updated on verification
 		Status:        entity.TxStatusPending,
 		Description:   fmt.Sprintf("Wallet top-up via Paystack — ₦%.2f", req.Amount),
-		PaystackRef:   data.Reference,
+		PaystackRef:   reference,
 	}
 	if err := s.txRepo.Create(ctx, tx); err != nil {
 		return nil, pkgerrors.ErrInternalServer
 	}
 
 	return &dto.DepositInitResponse{
-		AuthorizationURL: data.AuthorizationURL,
-		AccessCode:       data.AccessCode,
-		Reference:        data.Reference,
+		AuthorizationURL: authURL,
+		AccessCode:       accessCode,
+		Reference:        reference,
 	}, nil
 }
 
@@ -143,28 +153,39 @@ func (s *walletService) VerifyDeposit(ctx context.Context, userID uint, referenc
 		return tx, nil // idempotent — already credited
 	}
 
-	data, err := s.paystack.VerifyTransaction(reference)
-	if err != nil {
-		return nil, fmt.Errorf("payment gateway error: %w", err)
-	}
+	var amountNGN float64
+	if s.paystack.IsDummy() {
+		// Mock successful verification in development
+		amountNGN = tx.Amount
+	} else {
+		data, err := s.paystack.VerifyTransaction(reference)
+		if err != nil {
+			return nil, fmt.Errorf("payment gateway error: %w", err)
+		}
 
-	if data.Status != "success" {
-		_ = s.txRepo.UpdateStatus(ctx, tx.ID, entity.TxStatusFailed)
-		return nil, fmt.Errorf("payment %s", data.Status)
+		if data.Status != "success" {
+			_ = s.txRepo.UpdateStatus(ctx, tx.ID, entity.TxStatusFailed)
+			return nil, fmt.Errorf("payment %s", data.Status)
+		}
+		amountNGN = float64(data.Amount) / 100
 	}
-
-	amountNGN := float64(data.Amount) / 100
 
 	// Credit wallet
 	if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, amountNGN); err != nil {
 		return nil, pkgerrors.ErrInternalServer
 	}
 
+	// Re-fetch wallet to get current balance after update
+	wallet, err = s.walletRepo.FindByID(ctx, wallet.ID)
+	if err != nil {
+		return nil, pkgerrors.ErrInternalServer
+	}
+
 	// Update transaction to success
 	tx.Status = entity.TxStatusSuccess
 	tx.Amount = amountNGN
-	tx.BalanceAfter = wallet.Balance + amountNGN
-	if err := s.txRepo.UpdateStatus(ctx, tx.ID, entity.TxStatusSuccess); err != nil {
+	tx.BalanceAfter = wallet.Balance
+	if err := s.txRepo.Update(ctx, tx); err != nil {
 		return nil, pkgerrors.ErrInternalServer
 	}
 
@@ -205,7 +226,14 @@ func (s *walletService) ProcessWebhook(ctx context.Context, body []byte, signatu
 		if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, amountNGN); err != nil {
 			return err
 		}
-		_ = s.txRepo.UpdateStatus(ctx, tx.ID, entity.TxStatusSuccess)
+
+		wallet, err = s.walletRepo.FindByID(ctx, tx.WalletID)
+		if err == nil {
+			tx.Status = entity.TxStatusSuccess
+			tx.Amount = amountNGN
+			tx.BalanceAfter = wallet.Balance
+			_ = s.txRepo.Update(ctx, tx)
+		}
 
 	case "transfer.success":
 		var data struct{ Reference string `json:"reference"` }

@@ -280,7 +280,7 @@
           if (!confirm('Trigger Emergency SOS? This will alert emergency services and your contacts.')) return;
           this.sosBusy = true;
 
-          let lat = 6.5244, lng = 3.3792; // Lagos default
+          let lat = 9.0579, lng = 7.4951; // Abuja default
           if (navigator.geolocation) {
             try {
               const pos = await new Promise((res, rej) =>

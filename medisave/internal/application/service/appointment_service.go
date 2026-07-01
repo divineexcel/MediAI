@@ -414,7 +414,7 @@ func (s *appointmentService) GetConsultation(ctx context.Context, userID uint, a
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := s.assertParticipantByID(ctx, userID, appt); err != nil {
+	if err := s.assertParticipantByID(userID, appt); err != nil {
 		return nil, nil, err
 	}
 
@@ -432,7 +432,7 @@ func (s *appointmentService) GetMessages(ctx context.Context, userID uint, apptI
 	if err != nil {
 		return nil, err
 	}
-	if err := s.assertParticipantByID(ctx, userID, appt); err != nil {
+	if err := s.assertParticipantByID(userID, appt); err != nil {
 		return nil, err
 	}
 	msgs, err := s.consultRepo.ListMessages(ctx, apptID)
@@ -448,7 +448,7 @@ func (s *appointmentService) SendMessage(ctx context.Context, userID uint, role 
 	if err != nil {
 		return nil, err
 	}
-	if err := s.assertParticipantByID(ctx, userID, appt); err != nil {
+	if err := s.assertParticipantByID(userID, appt); err != nil {
 		return nil, err
 	}
 	if appt.Status != entity.AppointmentStatusInProgress {
@@ -548,7 +548,7 @@ func (s *appointmentService) GetPrescriptions(ctx context.Context, userID uint, 
 	if err != nil {
 		return nil, err
 	}
-	if err := s.assertParticipantByID(ctx, userID, appt); err != nil {
+	if err := s.assertParticipantByID(userID, appt); err != nil {
 		return nil, err
 	}
 
@@ -578,7 +578,7 @@ func (s *appointmentService) assertParticipant(ctx context.Context, userID uint,
 }
 
 // assertParticipantByID checks by comparing userID directly to stored UserIDs.
-func (s *appointmentService) assertParticipantByID(ctx context.Context, userID uint, appt *entity.Appointment) error {
+func (s *appointmentService) assertParticipantByID(userID uint, appt *entity.Appointment) error {
 	if appt.Patient.UserID == userID || appt.Doctor.UserID == userID {
 		return nil
 	}

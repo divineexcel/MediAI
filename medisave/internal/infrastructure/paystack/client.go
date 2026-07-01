@@ -218,3 +218,8 @@ func (c *Client) get(path string) (*http.Response, error) {
 func ReadBody(r io.Reader) ([]byte, error) {
 	return io.ReadAll(r)
 }
+
+// IsDummy returns true if the secret key is a placeholder or empty.
+func (c *Client) IsDummy() bool {
+	return c.secretKey == "" || c.secretKey == "sk_test_xxxxxxxxxxxxxxxxxxxx"
+}

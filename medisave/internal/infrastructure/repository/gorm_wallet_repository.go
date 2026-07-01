@@ -100,6 +100,10 @@ func (r *GORMTransactionRepository) ListByWalletID(ctx context.Context, walletID
 	return txs, total, err
 }
 
+func (r *GORMTransactionRepository) Update(ctx context.Context, tx *entity.Transaction) error {
+	return r.db.WithContext(ctx).Save(tx).Error
+}
+
 func (r *GORMTransactionRepository) UpdateStatus(ctx context.Context, txID uint, status entity.TransactionStatus) error {
 	return r.db.WithContext(ctx).
 		Model(&entity.Transaction{}).
