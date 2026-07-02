@@ -86,7 +86,7 @@ func Load() *Config {
 	App = &Config{
 		App: AppConfig{
 			Env:  getEnv("APP_ENV", "development"),
-			Port: getEnv("APP_PORT", "8080"),
+			Port: getEnvFallback("PORT", "APP_PORT", "8080"),
 			URL:  getEnv("APP_URL", "http://localhost:8080"),
 		},
 		Database: DatabaseConfig{
@@ -148,4 +148,15 @@ func getEnvInt(key string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+// getEnvFallback returns the value of the first key that is set, or defaultVal.
+func getEnvFallback(keys ...string) string {
+	defaultVal := keys[len(keys)-1]
+	for _, k := range keys[:len(keys)-1] {
+		if v := os.Getenv(k); v != "" {
+			return v
+		}
+	}
+	return defaultVal
 }
