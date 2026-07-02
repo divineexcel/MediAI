@@ -19,7 +19,7 @@ medisave-*
 
 # Go build cache
 /vendor/
-go.sum
+
 
 # IDE
 .idea/
