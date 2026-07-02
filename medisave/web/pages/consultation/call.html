@@ -8,109 +8,113 @@
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
     html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:#0a0a0a;overflow:hidden;}
 
-    /* ─── Shared layout ─────────────────────────────────── */
-    .fullscreen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    /* ─── Jitsi lives at z-index 1, everything we own is above it ─── */
+    #jitsi-container{
+      position:fixed;inset:0;bottom:90px;   /* clear space for our End Call bar */
+      z-index:1;display:none;
+    }
+    #jitsi-container iframe{width:100%;height:100%;border:none;display:block;}
 
-    /* ─── Loading / Waiting ─────────────────────────────── */
-    #waiting-screen{background:linear-gradient(135deg,#0a0a0a,#111827);z-index:60;}
-    @keyframes spin-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    /* ─── Shared overlay base ──────────────────────────────────────── */
+    .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+    /* ─── Waiting / Loading screen ─────────────────────────────────── */
+    #waiting-screen{background:linear-gradient(135deg,#0a0a0a,#111827);z-index:20;}
+    @keyframes pulse-scale{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
     #peer-avatar{
       width:100px;height:100px;border-radius:50%;
       background:linear-gradient(135deg,#0F9D58,#34A853);
       display:flex;align-items:center;justify-content:center;
       font-size:2rem;font-weight:700;color:#fff;
-      box-shadow:0 0 0 10px rgba(15,157,88,.12);
-      animation:spin-pulse 2s ease-in-out infinite;
+      box-shadow:0 0 0 12px rgba(15,157,88,.12);
+      animation:pulse-scale 2s ease-in-out infinite;
       margin-bottom:20px;
     }
-    @keyframes bounce{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+    @keyframes bounce{0%,80%,100%{transform:scale(.45);opacity:.35}40%{transform:scale(1);opacity:1}}
     .dot{width:8px;height:8px;border-radius:50%;background:#0F9D58;display:inline-block;margin:0 3px;}
     .dot:nth-child(1){animation:bounce 1.4s 0s infinite}
     .dot:nth-child(2){animation:bounce 1.4s .2s infinite}
     .dot:nth-child(3){animation:bounce 1.4s .4s infinite}
 
-    /* ─── Jitsi container ───────────────────────────────── */
-    #jitsi-container{
-      position:fixed;inset:0;
-      /* leave room at bottom for the End Call bar */
-      bottom:88px;
-    }
-    #jitsi-container iframe{width:100%;height:100%;border:none;}
-
-    /* ─── Top bar (peer name, timer) ────────────────────── */
+    /* ─── Top bar ────────────────────────────────────────────────────── */
     #topbar{
-      position:fixed;top:0;left:0;right:0;z-index:50;
-      display:flex;align-items:center;justify-content:space-between;
-      padding:14px 18px;
-      background:linear-gradient(to bottom,rgba(0,0,0,.7) 0%,transparent 100%);
-      pointer-events:none;
+      position:fixed;top:0;left:0;right:0;z-index:30;
+      display:none;align-items:center;justify-content:space-between;
+      padding:14px 18px;pointer-events:none;
+      background:linear-gradient(to bottom,rgba(0,0,0,.72) 0%,transparent 100%);
     }
 
-    /* ─── Chat-only UI ──────────────────────────────────── */
+    /* ─── "Joined" toast (participant-joined notification) ─────────── */
+    #join-toast{
+      position:fixed;top:20px;left:50%;transform:translateX(-50%);
+      z-index:9998;
+      background:rgba(15,157,88,.92);backdrop-filter:blur(8px);
+      color:#fff;padding:10px 20px;border-radius:100px;
+      font-size:.85rem;font-weight:600;white-space:nowrap;
+      display:none;
+      box-shadow:0 4px 20px rgba(0,0,0,.4);
+    }
+
+    /* ─── Chat-only ──────────────────────────────────────────────────── */
     #chat-screen{
-      position:fixed;inset:0;background:#0f0f0f;
-      display:none;flex-direction:column;z-index:55;
+      position:fixed;inset:0;bottom:90px;background:#0f0f0f;
+      display:none;flex-direction:column;z-index:20;
     }
-    #chat-screen-header{
-      padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.1);
-      display:flex;align-items:center;gap:12px;flex-shrink:0;
-    }
+    #chat-screen-header{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px;flex-shrink:0;}
     #chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
     .msg-me{align-self:flex-end;background:#0F9D58;color:#fff;padding:9px 14px;border-radius:18px 18px 4px 18px;font-size:.85rem;max-width:80%;word-break:break-word;}
     .msg-peer{align-self:flex-start;background:#1f2937;color:#e5e7eb;padding:9px 14px;border-radius:18px 18px 18px 4px;font-size:.85rem;max-width:80%;word-break:break-word;}
     .msg-sender{font-size:.7rem;color:#6b7280;margin-bottom:3px;}
-    #chat-input-bar{
-      padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);
-      display:flex;gap:8px;align-items:center;flex-shrink:0;
-    }
-    #chat-input{
-      flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
-      border-radius:12px;padding:10px 14px;color:#fff;font-size:.875rem;outline:none;
-    }
+    #chat-input-bar{padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:8px;align-items:center;flex-shrink:0;}
+    #chat-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;color:#fff;font-size:.875rem;outline:none;}
     #chat-input::placeholder{color:#6b7280;}
-    #chat-send{
-      width:40px;height:40px;background:#0F9D58;border:none;border-radius:10px;
-      cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-    }
+    #chat-send{width:40px;height:40px;background:#0F9D58;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
-    /* ─── End Call bar — ALWAYS on screen ──────────────── */
-    /* For video/voice: fixed bar above Jitsi */
-    /* For chat/waiting: bottom of the chat screen / waiting screen */
+    /* ─── END CALL BAR — always on screen, highest z-index ─────────── */
+    /* transform:translateZ(0) forces a GPU compositing layer so the bar   */
+    /* is guaranteed to paint above the Jitsi iframe in all browsers.       */
     #end-bar{
-      position:fixed;bottom:0;left:0;right:0;z-index:70;
-      height:88px;
-      background:linear-gradient(to top,rgba(0,0,0,.9) 60%,transparent 100%);
-      display:flex;align-items:center;justify-content:center;gap:20px;
+      position:fixed;bottom:0;left:0;right:0;
+      z-index:9999;
+      transform:translateZ(0);   /* GPU layer — beats iframe stacking */
+      height:90px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(to top,rgba(0,0,0,.92) 55%,transparent 100%);
+      padding-bottom:env(safe-area-inset-bottom, 0px); /* iPhone home-bar safe area */
     }
     #btn-end{
-      display:flex;align-items:center;gap:8px;
-      background:#ef4444;color:#fff;border:none;
-      padding:15px 36px;border-radius:999px;
-      font-size:1rem;font-weight:700;cursor:pointer;
-      box-shadow:0 4px 24px rgba(239,68,68,.5);
+      display:flex;align-items:center;gap:9px;
+      background:#ef4444;color:#fff;border:none;cursor:pointer;
+      padding:15px 40px;border-radius:999px;
+      font-size:1rem;font-weight:700;letter-spacing:.01em;
+      box-shadow:0 4px 28px rgba(239,68,68,.55);
       transition:transform .1s,opacity .15s;
+      /* also force GPU layer on button itself */
+      transform:translateZ(0);
     }
-    #btn-end:active{transform:scale(.96);}
-    #btn-end:disabled{opacity:.55;cursor:not-allowed;}
+    #btn-end:active{transform:scale(.95) translateZ(0);}
+    #btn-end:disabled{opacity:.5;cursor:not-allowed;}
 
-    /* ─── Ended screen ──────────────────────────────────── */
-    #ended-screen{background:linear-gradient(135deg,#0a0a0a,#111827);z-index:65;display:none;}
+    /* ─── Ended screen ───────────────────────────────────────────────── */
+    #ended-screen{
+      background:linear-gradient(135deg,#0a0a0a,#111827);
+      z-index:10000;display:none;   /* above end-bar so it fully replaces it */
+    }
   </style>
 </head>
 <body>
 
-<!-- ════════════════ WAITING / LOADING SCREEN ════════════════ -->
-<div id="waiting-screen" class="fullscreen">
-  <div style="text-align:center;padding:0 24px;">
+<!-- ══════════════ WAITING / LOADING ══════════════ -->
+<div id="waiting-screen" class="overlay">
+  <div style="text-align:center;padding:0 24px;max-width:360px;width:100%;">
     <div id="peer-avatar"><span id="peer-initials">?</span></div>
-    <p id="peer-name" style="color:#fff;font-size:1.2rem;font-weight:700;margin-bottom:6px;">Connecting…</p>
+    <p id="peer-name" style="color:#fff;font-size:1.2rem;font-weight:700;margin-bottom:6px;"></p>
     <p id="status-label" style="color:#9CA3AF;font-size:.875rem;margin-bottom:20px;">Setting up your secure consultation</p>
     <div id="loading-dots" style="display:flex;justify-content:center;">
       <span class="dot"></span><span class="dot"></span><span class="dot"></span>
     </div>
-
-    <!-- Error box (hidden until needed) -->
-    <div id="error-box" style="display:none;margin-top:24px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:18px 20px;max-width:320px;margin-left:auto;margin-right:auto;">
+    <!-- Error box -->
+    <div id="error-box" style="display:none;margin-top:24px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:18px;">
       <p id="error-title" style="color:#fca5a5;font-weight:700;font-size:.9rem;margin-bottom:6px;"></p>
       <p id="error-body" style="color:#9ca3af;font-size:.82rem;line-height:1.5;"></p>
       <button onclick="location.reload()" style="margin-top:14px;width:100%;padding:11px;background:#0F9D58;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;">Retry</button>
@@ -118,24 +122,27 @@
   </div>
 </div>
 
-<!-- ════════════════ JITSI (video / voice) ════════════════ -->
-<div id="jitsi-container" style="display:none;"></div>
+<!-- ══════════════ JITSI (video / voice) ══════════════ -->
+<div id="jitsi-container"></div>
 
 <!-- Top bar — shown after Jitsi joins -->
-<div id="topbar" style="display:none;">
+<div id="topbar">
   <div style="display:flex;align-items:center;gap:10px;">
-    <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;">
+    <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
       <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.518 3.949 1 6.818 1c1.947 0 3.876.876 5.182 2.5C13.306 1.876 15.235 1 17.182 1 20.051 1 23 3.518 23 7.191c0 4.105-5.37 8.863-11 14.402z"/></svg>
     </div>
     <div>
       <p id="topbar-peer" style="color:#fff;font-size:.85rem;font-weight:700;line-height:1.2;"></p>
-      <p style="color:#86EFAC;font-size:.72rem;">MediSave Secure Consultation</p>
+      <p style="color:#86EFAC;font-size:.72rem;font-weight:500;">MediSave Secure Consultation</p>
     </div>
   </div>
-  <p id="call-timer" style="color:#9CA3AF;font-size:.8rem;font-weight:500;">00:00</p>
+  <p id="call-timer" style="color:#9CA3AF;font-size:.8rem;font-weight:500;pointer-events:auto;">00:00</p>
 </div>
 
-<!-- ════════════════ CHAT-ONLY SCREEN ════════════════ -->
+<!-- "Participant joined" toast -->
+<div id="join-toast"></div>
+
+<!-- ══════════════ CHAT-ONLY SCREEN ══════════════ -->
 <div id="chat-screen">
   <div id="chat-screen-header">
     <div id="chat-avatar" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#fff;flex-shrink:0;">?</div>
@@ -146,15 +153,14 @@
   </div>
   <div id="chat-msgs"></div>
   <div id="chat-input-bar">
-    <input id="chat-input" type="text" placeholder="Type a message…" autocomplete="off"
-      onkeydown="if(event.key==='Enter')sendChatMsg()"/>
+    <input id="chat-input" type="text" placeholder="Type a message…" autocomplete="off" onkeydown="if(event.key==='Enter')sendChatMsg()"/>
     <button id="chat-send" onclick="sendChatMsg()">
       <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
     </button>
   </div>
 </div>
 
-<!-- ════════════════ END CALL BAR — always on screen ════════════════ -->
+<!-- ══════════════ END CALL BAR — always visible, z-index 9999 ══════════════ -->
 <div id="end-bar">
   <button id="btn-end" onclick="endCall()">
     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
@@ -164,9 +170,9 @@
   </button>
 </div>
 
-<!-- ════════════════ ENDED SCREEN ════════════════ -->
-<div id="ended-screen" class="fullscreen" style="display:none;">
-  <div style="text-align:center;padding:0 28px;">
+<!-- ══════════════ ENDED SCREEN ══════════════ -->
+<div id="ended-screen" class="overlay" style="display:none;">
+  <div style="text-align:center;padding:0 28px;max-width:360px;width:100%;">
     <div style="width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
       <svg width="34" height="34" fill="#6B7280" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
     </div>
@@ -186,65 +192,69 @@
 
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
-// ─── State ────────────────────────────────────────────────────────────────────
-let _msToken  = '';
-let _apptID   = '0';
-let _role     = 'patient';
-let _apptType = 'video';
-let _peerName = 'Connecting…';
-let _myName   = 'Me';
-let _jitsi    = null;
-let _startAt  = null;
-let _timerID  = null;
+// ─── Module state ─────────────────────────────────────────────────────────────
+let _msToken   = '';
+let _apptID    = '0';
+let _role      = 'patient';
+let _apptType  = 'video';
+let _peerName  = 'Connecting…';
+let _myName    = 'Me';
+let _jitsi     = null;
+let _startAt   = null;
+let _timerID   = null;
 let _chatPollID = null;
 let _lastMsgID  = 0;
+let _ended      = false;   // guard against double-fire of onCallEnded
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 (async function() {
   _msToken = localStorage.getItem('ms_token') || '';
-  if (!_msToken) { window.location.href = '/login'; return; }
+  if (!_msToken) { location.href = '/login'; return; }
 
   const parts = location.pathname.split('/').filter(Boolean);
-  _apptID   = parts[1] || '0';
+  _apptID = parts[1] || '0';
   const user = JSON.parse(localStorage.getItem('ms_user') || '{}');
-  _role      = user.role || 'patient';
+  _role = user.role || 'patient';
 
-  // 1. Load appointment details for display names and type
+  // ── 1. Fetch appointment for display names + type ──────────────────────────
   try {
-    const r = await authFetch(`/api/v1/appointments/${_apptID}`);
+    const r = await api(`/api/v1/appointments/${_apptID}`);
     if (r.ok) {
       const { data } = await r.json();
       _apptType = data?.type || 'video';
       if (_role === 'patient') {
         const d = data?.doctor?.user || {};
         _peerName = d.first_name ? `Dr. ${d.first_name} ${d.last_name}` : 'Your Doctor';
-        _myName   = `${data?.patient?.user?.first_name || user.first_name || 'Patient'} ${data?.patient?.user?.last_name || user.last_name || ''}`.trim();
+        _myName   = [data?.patient?.user?.first_name || user.first_name,
+                     data?.patient?.user?.last_name  || user.last_name].filter(Boolean).join(' ') || 'Patient';
       } else {
         const p = data?.patient?.user || {};
         _peerName = p.first_name ? `${p.first_name} ${p.last_name}` : 'Patient';
-        _myName   = `Dr. ${data?.doctor?.user?.first_name || user.first_name || ''} ${data?.doctor?.user?.last_name || user.last_name || ''}`.trim();
+        _myName   = 'Dr. ' + [data?.doctor?.user?.first_name || user.first_name,
+                               data?.doctor?.user?.last_name  || user.last_name].filter(Boolean).join(' ');
       }
     }
   } catch(_) {}
 
-  setWaiting(_peerName, 'Verifying access…');
+  setWaiting('Verifying access…');
 
-  // 2. Get room token (auth check + room name)
+  // ── 2. Room-token check (authorises this user for this appointment) ─────────
   let roomName;
   try {
-    const r = await authFetch(`/api/v1/appointments/${_apptID}/room-token`);
+    const r = await api(`/api/v1/appointments/${_apptID}/room-token`);
     const body = await r.json();
     if (!r.ok) {
-      showError('Access Denied', body.message || 'You are not a participant of this consultation, or it has not started yet.');
+      showError('Access Denied', body.message || 'You are not a participant of this consultation, or the doctor has not started it yet.');
       return;
     }
     roomName = body.data.room_name;
   } catch(e) {
-    showError('Connection Error', 'Could not reach the server. Please check your connection and retry.');
+    showError('Connection Error', 'Could not reach the server. Please check your internet connection and retry.');
     return;
   }
 
-  // 3. Branch: chat-only vs video/voice
+  // ── 3. Launch ──────────────────────────────────────────────────────────────
+  setWaiting(`Waiting for ${_peerName}…`);
   if (_apptType === 'chat') {
     launchChat();
   } else {
@@ -252,85 +262,92 @@ let _lastMsgID  = 0;
   }
 })();
 
-// ─── Jitsi (video / voice) ────────────────────────────────────────────────────
+// ─── Jitsi ────────────────────────────────────────────────────────────────────
 function launchJitsi(roomName) {
-  setWaiting(_peerName, `Joining ${_apptType} call…`);
-
   const isVoice = (_apptType === 'voice');
 
   _jitsi = new JitsiMeetExternalAPI('meet.jit.si', {
     roomName,
     parentNode: document.getElementById('jitsi-container'),
-    userInfo:   { displayName: _myName },
+    userInfo: { displayName: _myName },
     configOverwrite: {
-      startWithAudioMuted:  false,
-      startWithVideoMuted:  isVoice, // voice = no camera
-      enableWelcomePage:    false,
-      prejoinPageEnabled:   false,
-      disableDeepLinking:   true,
-      enableClosePage:      false,
-      defaultLanguage:      'en',
-      subject:              'MediSave Consultation',
-      // Remove hangup from toolbar — our End Call button is the only exit path
+      startWithAudioMuted: false,
+      startWithVideoMuted: isVoice,
+      enableWelcomePage:   false,
+      prejoinPageEnabled:  false,
+      disableDeepLinking:  true,
+      enableClosePage:     false,
+      defaultLanguage:     'en',
+      subject:             'MediSave Consultation',
+      // 'hangup' intentionally excluded — our End Call button is the only exit
       toolbarButtons: isVoice
         ? ['microphone', 'chat', 'raisehand', 'tileview']
         : ['microphone', 'camera', 'chat', 'desktop', 'fullscreen',
-           'fodeviceselection', 'participants-pane', 'raisehand', 'tileview',
-           'toggle-camera', 'videoquality'],
+           'fodeviceselection', 'participants-pane', 'raisehand',
+           'tileview', 'toggle-camera', 'videoquality'],
     },
     interfaceConfigOverwrite: {
-      SHOW_JITSI_WATERMARK:  false,
+      SHOW_JITSI_WATERMARK:      false,
       SHOW_WATERMARK_FOR_GUESTS: false,
-      SHOW_BRAND_WATERMARK:  false,
-      SHOW_POWERED_BY:       false,
-      APP_NAME:              'MediSave',
-      HIDE_INVITE_MORE_HEADER: true,
-      MOBILE_APP_PROMO:      false,
+      SHOW_BRAND_WATERMARK:      false,
+      SHOW_POWERED_BY:           false,
+      APP_NAME:                  'MediSave',
+      HIDE_INVITE_MORE_HEADER:   true,
+      MOBILE_APP_PROMO:          false,
     },
   });
 
+  // ── Joined: hide waiting, show call ────────────────────────────────────────
   _jitsi.on('videoConferenceJoined', () => {
     _startAt = Date.now();
     startTimer();
-
-    // Hide waiting screen, show Jitsi
-    document.getElementById('waiting-screen').style.display = 'none';
-    document.getElementById('jitsi-container').style.display = 'block';
-    document.getElementById('topbar').style.display = 'flex';
-    document.getElementById('topbar-peer').textContent = _peerName;
+    document.getElementById('waiting-screen').style.display   = 'none';
+    document.getElementById('jitsi-container').style.display  = 'block';
+    document.getElementById('topbar').style.display           = 'flex';
+    document.getElementById('topbar-peer').textContent        = _peerName;
   });
 
-  _jitsi.on('videoConferenceLeft', onCallEnded);
+  // ── Other participant joined → ring + toast for BOTH roles ─────────────────
+  _jitsi.on('participantJoined', (info) => {
+    playRing();
+    const name = info?.displayName || _peerName;
+    showJoinToast(`${name} joined the call`);
+  });
+
+  // ── Participant left ────────────────────────────────────────────────────────
+  _jitsi.on('participantLeft', (info) => {
+    const name = info?.displayName || _peerName;
+    showJoinToast(`${name} left the call`, '#6b7280');
+  });
+
+  _jitsi.on('videoConferenceLeft', () => onCallEnded());
   _jitsi.on('readyToClose', () => { if (_jitsi) { _jitsi.dispose(); _jitsi = null; } });
 }
 
-// ─── Chat-only ────────────────────────────────────────────────────────────────
+// ─── Chat ─────────────────────────────────────────────────────────────────────
 function launchChat() {
   const initials = _peerName.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase() || '?';
-  document.getElementById('chat-avatar').textContent = initials;
+  document.getElementById('chat-avatar').textContent   = initials;
   document.getElementById('chat-peer-label').textContent = _peerName;
-
   document.getElementById('waiting-screen').style.display = 'none';
   document.getElementById('chat-screen').style.display    = 'flex';
-
-  _startAt = Date.now();
-  // Poll messages every 2 s
+  _startAt    = Date.now();
   loadChatMessages();
   _chatPollID = setInterval(loadChatMessages, 2000);
 }
 
 async function loadChatMessages() {
   try {
-    const r = await authFetch(`/api/v1/consultations/${_apptID}/messages`);
+    const r = await api(`/api/v1/consultations/${_apptID}/messages`);
     if (!r.ok) return;
     const { data } = await r.json();
-    const msgs = data || [];
     const container = document.getElementById('chat-msgs');
-    msgs.forEach(m => {
+    (data || []).forEach(m => {
       if (m.id <= _lastMsgID) return;
       _lastMsgID = m.id;
       const isMe = (m.sender_role === _role);
-      const wrap = document.createElement('div');
+      if (!isMe) { playRing(); showJoinToast(`${_peerName} sent a message`); }
+      const wrap   = document.createElement('div');
       if (!isMe) {
         const s = document.createElement('div');
         s.className = 'msg-sender';
@@ -338,7 +355,7 @@ async function loadChatMessages() {
         wrap.appendChild(s);
       }
       const bubble = document.createElement('div');
-      bubble.className = isMe ? 'msg-me' : 'msg-peer';
+      bubble.className  = isMe ? 'msg-me' : 'msg-peer';
       bubble.textContent = m.message;
       wrap.appendChild(bubble);
       container.appendChild(wrap);
@@ -352,63 +369,54 @@ async function sendChatMsg() {
   const text  = input.value.trim();
   if (!text) return;
   input.value = '';
-
-  // Optimistic UI
   const container = document.getElementById('chat-msgs');
   const wrap = document.createElement('div');
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-me';
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
-  container.appendChild(wrap);
+  const b = document.createElement('div');
+  b.className = 'msg-me'; b.textContent = text;
+  wrap.appendChild(b); container.appendChild(wrap);
   container.scrollTop = container.scrollHeight;
-
-  try {
-    await authFetch(`/api/v1/consultations/${_apptID}/messages`, {
-      method: 'POST',
-      body: JSON.stringify({ message: text }),
-    });
-  } catch(_) {}
+  try { await api(`/api/v1/consultations/${_apptID}/messages`, { method:'POST', body: JSON.stringify({message:text}) }); }
+  catch(_) {}
 }
 
 // ─── End Call ─────────────────────────────────────────────────────────────────
-async function endCall() {
+function endCall() {
+  if (_ended) return;               // prevent double-fire
   const btn = document.getElementById('btn-end');
-  btn.disabled = true;
-  btn.textContent = 'Ending…';
+  if (btn) { btn.disabled = true; btn.textContent = 'Ending…'; }
 
   if (_apptType === 'chat') {
     clearInterval(_chatPollID);
     onCallEnded();
   } else if (_jitsi) {
     _jitsi.executeCommand('hangup');
-    // onCallEnded fires via videoConferenceLeft event
-    // Safety fallback in case event doesn't fire
-    setTimeout(onCallEnded, 2500);
+    // Safety net: if videoConferenceLeft never fires, clean up after 2.5 s
+    setTimeout(() => onCallEnded(), 2500);
   } else {
     onCallEnded();
   }
 }
 
 function onCallEnded() {
+  if (_ended) return;               // idempotent — safe to call multiple times
+  _ended = true;
   stopTimer();
   if (_jitsi) { try { _jitsi.dispose(); } catch(_) {} _jitsi = null; }
+  clearInterval(_chatPollID);
 
-  // Hide all active UI
-  ['waiting-screen','jitsi-container','topbar','chat-screen','end-bar'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
+  // Hide all active layers
+  ['waiting-screen','jitsi-container','topbar','chat-screen','end-bar','join-toast']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.style.display='none'; });
 
   const secs = _startAt ? Math.floor((Date.now() - _startAt) / 1000) : 0;
-  const m = String(Math.floor(secs / 60)).padStart(2,'0');
-  const s = String(secs % 60).padStart(2,'0');
+  const m = String(Math.floor(secs/60)).padStart(2,'0');
+  const s = String(secs%60).padStart(2,'0');
   document.getElementById('ended-duration').textContent = `Duration: ${m}:${s}`;
   document.getElementById('ended-screen').style.display = 'flex';
 
-  // Doctor: mark consultation as complete
+  // Doctor: mark consultation complete (fire-and-forget)
   if (_role === 'doctor') {
-    authFetch(`/api/v1/appointments/${_apptID}/complete`, { method: 'PATCH' })
+    api(`/api/v1/appointments/${_apptID}/complete`, { method: 'PATCH' })
       .then(r => {
         if (r.ok) {
           document.getElementById('ended-complete').style.display = 'block';
@@ -424,35 +432,56 @@ function goBack() {
   location.href = _role === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
 }
 
+// ─── Ring sound (Web Audio API — no file needed) ──────────────────────────────
+function playRing() {
+  try {
+    const ctx  = new AudioContext();
+    const beep = (start, freq) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.05);
+      gain.gain.setValueAtTime(0.25, start + 0.28);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.start(start); osc.stop(start + 0.35);
+    };
+    const now = ctx.currentTime;
+    beep(now,       480);
+    beep(now + 0.4, 480);
+    beep(now + 0.8, 600);
+  } catch(_) {}
+}
+
+// ─── "Participant joined" toast ───────────────────────────────────────────────
+let _toastTimeout;
+function showJoinToast(msg, bg = 'rgba(15,157,88,.92)') {
+  const el = document.getElementById('join-toast');
+  el.textContent = msg;
+  el.style.background = bg;
+  el.style.display    = 'block';
+  clearTimeout(_toastTimeout);
+  _toastTimeout = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
 // ─── Timer ────────────────────────────────────────────────────────────────────
 function startTimer() {
   _timerID = setInterval(() => {
     const secs = Math.floor((Date.now() - _startAt) / 1000);
-    const m = String(Math.floor(secs / 60)).padStart(2,'0');
-    const s = String(secs % 60).padStart(2,'0');
     const el = document.getElementById('call-timer');
-    if (el) el.textContent = `${m}:${s}`;
+    if (el) el.textContent = String(Math.floor(secs/60)).padStart(2,'0') + ':' + String(secs%60).padStart(2,'0');
   }, 1000);
 }
 function stopTimer() { clearInterval(_timerID); }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function authFetch(url, opts = {}) {
-  return fetch(url, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + _msToken,
-      ...(opts.headers || {}),
-    },
-  });
-}
-
-function setWaiting(name, status) {
-  const initials = name.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase() || '?';
-  document.getElementById('peer-initials').textContent  = initials;
-  document.getElementById('peer-name').textContent      = name;
-  document.getElementById('status-label').textContent   = status;
+// ─── Waiting screen helpers ───────────────────────────────────────────────────
+function setWaiting(status) {
+  const initials = _peerName.split(' ').map(w => w[0]||'').join('').slice(0,2).toUpperCase() || '?';
+  document.getElementById('peer-initials').textContent = initials;
+  document.getElementById('peer-name').textContent     = _peerName;
+  document.getElementById('status-label').textContent  = status;
 }
 
 function showError(title, body) {
@@ -461,8 +490,16 @@ function showError(title, body) {
   document.getElementById('error-title').textContent    = title;
   document.getElementById('error-body').textContent     = body;
   document.getElementById('error-box').style.display    = 'block';
-  // Keep End Call button but change label to "Leave"
-  document.getElementById('btn-end').textContent        = 'Leave';
+  const btn = document.getElementById('btn-end');
+  if (btn) { btn.innerHTML = 'Leave Page'; btn.onclick = () => goBack(); }
+}
+
+// ─── Authenticated fetch ──────────────────────────────────────────────────────
+function api(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+_msToken, ...(opts.headers||{}) },
+  });
 }
 </script>
 </body>
