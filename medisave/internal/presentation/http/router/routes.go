@@ -132,6 +132,9 @@ func (r *Router) RegisterAll(h *Handlers) {
 			doctorAppt.PATCH("/:id/start",    h.Appointment.Start)
 			doctorAppt.PATCH("/:id/complete", h.Appointment.Complete)
 		}
+
+		// Room token: accessible by both doctor and patient (authenticated)
+		apptGroup.GET("/:id/room-token", h.Room.GetToken)
 	}
 
 	// ─── CONSULTATIONS (/api/v1/consultations) ───────────────────────────────

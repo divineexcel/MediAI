@@ -342,6 +342,23 @@ function doctorApptApp() {
     async init() {
       if (!localStorage.getItem('ms_token')) { window.location.href = '/login'; return; }
       await Promise.all([this.fetchAppointments(), this.fetchToday()]);
+      this._startPolling();
+    },
+
+    _startPolling() {
+      setInterval(async () => {
+        if (document.hidden || this.loading) return;
+        try {
+          const params = new URLSearchParams({ page: this.currentPage, limit: 10 });
+          if (this.statusFilter !== 'all') params.set('status', this.statusFilter);
+          const r = await this.api('GET', `/api/v1/appointments?${params}`);
+          this.appointments = r.data || [];
+          if (r.meta) this.totalPages = r.meta.total_pages || 1;
+          // Also refresh today silently
+          const t = await this.api('GET', '/api/v1/doctors/me/today');
+          this.todayAppts = t.data || [];
+        } catch(_) {}
+      }, 30000);
     },
 
     async fetchAppointments() {

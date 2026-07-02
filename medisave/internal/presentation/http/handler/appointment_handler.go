@@ -14,10 +14,11 @@ import (
 
 type AppointmentHandler struct {
 	apptService service.AppointmentService
+	roomSvc     service.ConsultationRoomService
 }
 
-func NewAppointmentHandler(apptService service.AppointmentService) *AppointmentHandler {
-	return &AppointmentHandler{apptService: apptService}
+func NewAppointmentHandler(apptService service.AppointmentService, roomSvc service.ConsultationRoomService) *AppointmentHandler {
+	return &AppointmentHandler{apptService: apptService, roomSvc: roomSvc}
 }
 
 // GET /api/v1/appointments
@@ -128,6 +129,8 @@ func (h *AppointmentHandler) Complete(c *gin.Context) {
 		middleware.MapError(c, err)
 		return
 	}
+	// Best-effort: mark the LiveKit room as ended.
+	_ = h.roomSvc.EndRoom(c.Request.Context(), id)
 	response.OK(c, "consultation completed", nil)
 }
 

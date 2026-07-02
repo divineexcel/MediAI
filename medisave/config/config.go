@@ -19,6 +19,7 @@ type Config struct {
 	SMS      SMSConfig
 	USSD     USSDConfig
 	Rate     RateLimitConfig
+	LiveKit  LiveKitConfig
 }
 
 type AppConfig struct {
@@ -76,6 +77,12 @@ type RateLimitConfig struct {
 	RequestsPerMinute int
 }
 
+type LiveKitConfig struct {
+	WSURL     string
+	APIKey    string
+	APISecret string
+}
+
 var App *Config
 
 func Load() *Config {
@@ -128,6 +135,11 @@ func Load() *Config {
 		},
 		Rate: RateLimitConfig{
 			RequestsPerMinute: getEnvInt("RATE_LIMIT_REQUESTS_PER_MINUTE", 100),
+		},
+		LiveKit: LiveKitConfig{
+			WSURL:     getEnv("LIVEKIT_URL", "ws://localhost:7880"),
+			APIKey:    getEnv("LIVEKIT_API_KEY", "devkey"),
+			APISecret: getEnv("LIVEKIT_API_SECRET", "devsecret"),
 		},
 	}
 

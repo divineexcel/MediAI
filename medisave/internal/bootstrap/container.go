@@ -11,6 +11,7 @@ import (
 	"github.com/medisave/app/internal/presentation/http/router"
 	repo "github.com/medisave/app/internal/infrastructure/repository"
 	aiclient   "github.com/medisave/app/internal/infrastructure/external/ai"
+	lkclient   "github.com/medisave/app/internal/infrastructure/external/livekit"
 	mapsclient "github.com/medisave/app/internal/infrastructure/external/maps"
 	smsclient  "github.com/medisave/app/internal/infrastructure/external/sms"
 	pkgjwt "github.com/medisave/app/pkg/jwt"
@@ -35,10 +36,12 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	reminderRepo      := repo.NewGORMReminderRepository(db)
 	campaignRepo      := repo.NewGORMCampaignRepository(db)
 	ussdRepo          := repo.NewGORMUSSDRepository(db)
+	roomRepo          := repo.NewGORMConsultationRoomRepository(db)
 
 	// ─── INFRASTRUCTURE ──────────────────────────────────────────────────────
 	paystackClient := paystack.NewClient(cfg.Paystack.SecretKey, cfg.Paystack.BaseURL)
 	aiClient       := aiclient.NewClient(cfg.AI.BaseURL, cfg.AI.APIKey, cfg.AI.TimeoutSeconds)
+	lkClient       := lkclient.NewClient(cfg.LiveKit.WSURL, cfg.LiveKit.APIKey, cfg.LiveKit.APISecret)
 	mapsClient     := mapsclient.NewClient(cfg.Maps.PlacesAPIKey)
 	smsClient      := smsclient.NewClient(cfg.SMS.APIKey, cfg.SMS.Username, cfg.SMS.SenderID, cfg.SMS.GatewayURL)
 
@@ -55,6 +58,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	reminderSvc   := service.NewReminderService(reminderRepo, patientRepo)
 	adminSvc      := service.NewAdminService(patientRepo, doctorRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, smsClient)
 	ussdSvc       := service.NewUSSDService(ussdRepo, userRepo, patientRepo, doctorRepo, walletSvc, apptSvc, emergencySvc, reminderSvc, mapsClient)
+	roomSvc       := service.NewConsultationRoomService(roomRepo, apptRepo, patientRepo, doctorRepo, lkClient)
 
 	// ─── RTC ─────────────────────────────────────────────────────────────────
 	rtcHub := rtc.NewHub()
@@ -66,7 +70,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 		Patient:      handler.NewPatientHandler(patientSvc, notifSvc),
 		Doctor:       handler.NewDoctorHandler(doctorSvc),
 		Wallet:       handler.NewWalletHandler(walletSvc),
-		Appointment:  handler.NewAppointmentHandler(apptSvc),
+		Appointment:  handler.NewAppointmentHandler(apptSvc, roomSvc),
 		Consultation: handler.NewConsultationHandler(apptSvc),
 		Record:       handler.NewMedicalRecordHandler(recordSvc),
 		AI:           handler.NewAIHandler(aiSvc),
@@ -77,5 +81,6 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 		USSD:         handler.NewUSSDHandler(ussdSvc),
 		Admin:        handler.NewAdminHandler(adminSvc),
 		Call:         handler.NewCallHandler(rtcHub),
+		Room:         handler.NewRoomHandler(roomSvc),
 	}
 }

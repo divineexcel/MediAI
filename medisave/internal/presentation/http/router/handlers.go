@@ -21,4 +21,5 @@ type Handlers struct {
 	USSD         *handler.USSDHandler
 	Admin        *handler.AdminHandler
 	Call         *handler.CallHandler
+	Room         *handler.RoomHandler
 }

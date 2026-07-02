@@ -34,6 +34,7 @@ var all = []Migration{
 	migration003DoctorDocuments(),
 	migration004HealthCampaigns(),
 	migration005USSDSessions(),
+	migration006ConsultationRooms(),
 }
 
 // Run applies every pending migration in order, exactly once.
