@@ -16,7 +16,7 @@ import (
 type AppointmentService interface {
 	Book(ctx context.Context, userID uint, req *dto.BookAppointmentRequest) (*dto.AppointmentBookedResponse, error)
 	GetByID(ctx context.Context, userID uint, role entity.Role, apptID uint) (*entity.Appointment, error)
-	List(ctx context.Context, userID uint, role entity.Role, p pagination.Params) ([]*entity.Appointment, int64, error)
+	List(ctx context.Context, userID uint, role entity.Role, status string, p pagination.Params) ([]*entity.Appointment, int64, error)
 	Cancel(ctx context.Context, userID uint, role entity.Role, apptID uint, reason string) error
 	Start(ctx context.Context, userID uint, apptID uint) error
 	Complete(ctx context.Context, userID uint, apptID uint) error
@@ -206,19 +206,19 @@ func (s *appointmentService) GetByID(ctx context.Context, userID uint, role enti
 
 // ─── Appointment: List ────────────────────────────────────────────────────────
 
-func (s *appointmentService) List(ctx context.Context, userID uint, role entity.Role, p pagination.Params) ([]*entity.Appointment, int64, error) {
+func (s *appointmentService) List(ctx context.Context, userID uint, role entity.Role, status string, p pagination.Params) ([]*entity.Appointment, int64, error) {
 	if role == entity.RoleDoctor {
 		doctor, err := s.doctorRepo.FindByUserID(ctx, userID)
 		if err != nil {
 			return nil, 0, err
 		}
-		return s.apptRepo.ListByDoctor(ctx, doctor.ID, p)
+		return s.apptRepo.ListByDoctor(ctx, doctor.ID, status, p)
 	}
 	patient, err := s.patientRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.apptRepo.ListByPatient(ctx, patient.ID, p)
+	return s.apptRepo.ListByPatient(ctx, patient.ID, status, p)
 }
 
 // ─── Appointment: Cancel ──────────────────────────────────────────────────────

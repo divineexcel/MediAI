@@ -14,20 +14,13 @@
 <body x-data="nearbyApp()" x-init="init()">
 
   <!-- NAV -->
-  <nav class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center">
-        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      </div>
+  <nav class="bg-white border-b border-gray-100 px-6 py-4 flex items-center sticky top-0 z-40">
+    <div class="flex items-center gap-4">
+      <a href="/patient/dashboard" class="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:text-primary transition shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      </a>
       <span class="font-bold text-gray-900 text-lg">Find Nearby</span>
     </div>
-    <a href="/patient/dashboard" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-      Dashboard
-    </a>
   </nav>
 
   <div class="max-w-2xl mx-auto px-4 py-6 space-y-5">

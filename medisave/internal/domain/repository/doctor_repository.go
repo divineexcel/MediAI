@@ -21,4 +21,5 @@ type DoctorRepository interface {
 	CountPending(ctx context.Context) (int64, error)
 	UpdateRating(ctx context.Context, doctorID uint, rating float64, totalReviews int) error
 	IncrementConsultations(ctx context.Context, doctorID uint) error
+	FindAll(ctx context.Context) ([]*entity.Doctor, error)
 }

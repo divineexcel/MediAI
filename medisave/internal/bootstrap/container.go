@@ -33,6 +33,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	emergencyRepo    := repo.NewGORMEmergencyRepository(db)
 	emergencyContRepo := repo.NewGORMEmergencyContactRepository(db)
 	reminderRepo      := repo.NewGORMReminderRepository(db)
+	campaignRepo      := repo.NewGORMCampaignRepository(db)
 
 	// ─── INFRASTRUCTURE ──────────────────────────────────────────────────────
 	paystackClient := paystack.NewClient(cfg.Paystack.SecretKey, cfg.Paystack.BaseURL)
@@ -51,7 +52,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	recordSvc     := service.NewMedicalRecordService(repo.NewGORMMedicalRecordRepository(db), prescRepo, patientRepo)
 	emergencySvc  := service.NewEmergencyService(emergencyRepo, emergencyContRepo, patientRepo, notifRepo)
 	reminderSvc   := service.NewReminderService(reminderRepo, patientRepo)
-	adminSvc      := service.NewAdminService(patientRepo, doctorRepo, apptRepo, txRepo, emergencyRepo, notifRepo, smsClient)
+	adminSvc      := service.NewAdminService(patientRepo, doctorRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, smsClient)
 
 	// ─── RTC ─────────────────────────────────────────────────────────────────
 	rtcHub := rtc.NewHub()

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/medisave/app/internal/application/dto"
 	"github.com/medisave/app/internal/domain/entity"
@@ -31,6 +32,7 @@ type adminService struct {
 	txRepo          repository.TransactionRepository
 	emergencyRepo   repository.EmergencyRepository
 	notifRepo       repository.NotificationRepository
+	campaignRepo    repository.CampaignRepository
 	smsClient       *smsclient.Client
 }
 
@@ -41,6 +43,7 @@ func NewAdminService(
 	txRepo repository.TransactionRepository,
 	emergencyRepo repository.EmergencyRepository,
 	notifRepo repository.NotificationRepository,
+	campaignRepo repository.CampaignRepository,
 	smsClient *smsclient.Client,
 ) AdminService {
 	return &adminService{
@@ -50,6 +53,7 @@ func NewAdminService(
 		txRepo:        txRepo,
 		emergencyRepo: emergencyRepo,
 		notifRepo:     notifRepo,
+		campaignRepo:  campaignRepo,
 		smsClient:     smsClient,
 	}
 }
@@ -82,7 +86,7 @@ func (s *adminService) ListPatients(ctx context.Context, p pagination.Params) ([
 func (s *adminService) GetPatient(ctx context.Context, patientID uint) (*entity.Patient, error) {
 	patient, err := s.patientRepo.FindByID(ctx, patientID)
 	if err != nil {
-		return nil, pkgerrors.ErrPatientNotFound
+		return nil, err
 	}
 	return patient, nil
 }
@@ -94,7 +98,7 @@ func (s *adminService) ListDoctors(ctx context.Context, p pagination.Params) ([]
 func (s *adminService) GetDoctor(ctx context.Context, doctorID uint) (*entity.Doctor, error) {
 	doctor, err := s.doctorRepo.FindByID(ctx, doctorID)
 	if err != nil {
-		return nil, pkgerrors.ErrDoctorNotFound
+		return nil, err
 	}
 	return doctor, nil
 }
@@ -156,9 +160,64 @@ func (s *adminService) ListEmergencies(ctx context.Context) ([]*entity.Emergency
 }
 
 func (s *adminService) SendCampaign(ctx context.Context, req *dto.HealthCampaignRequest) error {
-	// In production: fetch all user phones by role and send bulk SMS
-	// For now: log the campaign and return success
-	// This would also send push notifications via Firebase
-	_ = req
+	campaign := &entity.HealthCampaign{
+		Title:      req.Title,
+		Message:    req.Message,
+		Category:   req.Category,
+		TargetRole: req.TargetRole,
+		Location:   req.Location,
+	}
+	if err := s.campaignRepo.Create(ctx, campaign); err != nil {
+		return err
+	}
+
+	notifData, err := json.Marshal(map[string]string{
+		"category": req.Category,
+		"location": req.Location,
+	})
+	if err != nil {
+		return err
+	}
+	dataStr := string(notifData)
+
+	// Dispatch notifications to users matching TargetRole and Location
+	if req.TargetRole == "all" || req.TargetRole == "patient" {
+		var patients []*entity.Patient
+		var perr error
+		if req.Location == "all" || req.Location == "" {
+			patients, perr = s.patientRepo.FindAll(ctx)
+		} else {
+			patients, perr = s.patientRepo.FindByState(ctx, req.Location)
+		}
+		if perr == nil {
+			for _, p := range patients {
+				_ = s.notifRepo.Create(ctx, &entity.Notification{
+					UserID:  p.UserID,
+					Type:    entity.NotifTypeSystem,
+					Title:   req.Title,
+					Body:    req.Message,
+					Channel: entity.ChannelInApp,
+					Data:    dataStr,
+				})
+			}
+		}
+	}
+
+	if req.TargetRole == "all" || req.TargetRole == "doctor" {
+		doctors, derr := s.doctorRepo.FindAll(ctx)
+		if derr == nil {
+			for _, d := range doctors {
+				_ = s.notifRepo.Create(ctx, &entity.Notification{
+					UserID:  d.UserID,
+					Type:    entity.NotifTypeSystem,
+					Title:   req.Title,
+					Body:    req.Message,
+					Channel: entity.ChannelInApp,
+					Data:    dataStr,
+				})
+			}
+		}
+	}
+
 	return nil
 }

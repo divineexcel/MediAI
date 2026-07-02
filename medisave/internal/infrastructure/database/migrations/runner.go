@@ -32,6 +32,7 @@ var all = []Migration{
 	migration001InitialSchema(),
 	migration002Indexes(),
 	migration003DoctorDocuments(),
+	migration004HealthCampaigns(),
 }
 
 // Run applies every pending migration in order, exactly once.

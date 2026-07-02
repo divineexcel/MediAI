@@ -134,3 +134,9 @@ func (r *GORMDoctorRepository) CountPending(ctx context.Context) (int64, error) 
 	err := r.db.WithContext(ctx).Model(&entity.Doctor{}).Where("status = ?", entity.DoctorStatusPending).Count(&count).Error
 	return count, err
 }
+
+func (r *GORMDoctorRepository) FindAll(ctx context.Context) ([]*entity.Doctor, error) {
+	var doctors []*entity.Doctor
+	err := r.db.WithContext(ctx).Preload("User").Find(&doctors).Error
+	return doctors, err
+}

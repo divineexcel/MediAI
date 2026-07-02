@@ -70,3 +70,15 @@ func (r *GORMPatientRepository) CountAll(ctx context.Context) (int64, error) {
 	err := r.db.WithContext(ctx).Model(&entity.Patient{}).Count(&count).Error
 	return count, err
 }
+
+func (r *GORMPatientRepository) FindByState(ctx context.Context, state string) ([]*entity.Patient, error) {
+	var patients []*entity.Patient
+	err := r.db.WithContext(ctx).Preload("User").Where("state = ?", state).Find(&patients).Error
+	return patients, err
+}
+
+func (r *GORMPatientRepository) FindAll(ctx context.Context) ([]*entity.Patient, error) {
+	var patients []*entity.Patient
+	err := r.db.WithContext(ctx).Preload("User").Find(&patients).Error
+	return patients, err
+}

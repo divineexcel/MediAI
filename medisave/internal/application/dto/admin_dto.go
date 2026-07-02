@@ -17,7 +17,9 @@ type VerifyDoctorRequest struct {
 }
 
 type HealthCampaignRequest struct {
-	Title   string `json:"title"   validate:"required"`
-	Body    string `json:"body"    validate:"required"`
-	Target  string `json:"target"  validate:"required,oneof=all patients doctors"`
+	Title      string `json:"title"       validate:"required"`
+	Message    string `json:"message"     validate:"required"`
+	TargetRole string `json:"target_role" validate:"required,oneof=all patient doctor"`
+	Category   string `json:"category"    validate:"required,oneof=vaccination blood_drive malaria outbreak maternal"`
+	Location   string `json:"location"    validate:"required"`
 }

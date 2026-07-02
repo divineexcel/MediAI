@@ -43,11 +43,14 @@ func (r *GORMAppointmentRepository) Update(ctx context.Context, a *entity.Appoin
 	return r.db.WithContext(ctx).Save(a).Error
 }
 
-func (r *GORMAppointmentRepository) ListByPatient(ctx context.Context, patientID uint, p pagination.Params) ([]*entity.Appointment, int64, error) {
+func (r *GORMAppointmentRepository) ListByPatient(ctx context.Context, patientID uint, status string, p pagination.Params) ([]*entity.Appointment, int64, error) {
 	var list []*entity.Appointment
 	var total int64
 
 	q := r.db.WithContext(ctx).Model(&entity.Appointment{}).Where("patient_id = ?", patientID)
+	if status != "" && status != "all" {
+		q = q.Where("status = ?", status)
+	}
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -57,11 +60,14 @@ func (r *GORMAppointmentRepository) ListByPatient(ctx context.Context, patientID
 	return list, total, err
 }
 
-func (r *GORMAppointmentRepository) ListByDoctor(ctx context.Context, doctorID uint, p pagination.Params) ([]*entity.Appointment, int64, error) {
+func (r *GORMAppointmentRepository) ListByDoctor(ctx context.Context, doctorID uint, status string, p pagination.Params) ([]*entity.Appointment, int64, error) {
 	var list []*entity.Appointment
 	var total int64
 
 	q := r.db.WithContext(ctx).Model(&entity.Appointment{}).Where("doctor_id = ?", doctorID)
+	if status != "" && status != "all" {
+		q = q.Where("status = ?", status)
+	}
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -127,7 +133,9 @@ func (r *GORMAppointmentRepository) ListAll(ctx context.Context, p pagination.Pa
 	var list []*entity.Appointment
 	var total int64
 	q := r.db.WithContext(ctx).Model(&entity.Appointment{})
-	q.Count(&total)
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 	err := q.Preload("Patient").Preload("Doctor").Order("created_at DESC").Offset(p.Offset).Limit(p.Limit).Find(&list).Error
 	return list, total, err
 }

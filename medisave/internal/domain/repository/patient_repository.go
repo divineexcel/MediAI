@@ -15,4 +15,6 @@ type PatientRepository interface {
 	List(ctx context.Context, p pagination.Params) ([]*entity.Patient, int64, error)
 	UpdateHealthScore(ctx context.Context, patientID uint, score int) error
 	CountAll(ctx context.Context) (int64, error)
+	FindByState(ctx context.Context, state string) ([]*entity.Patient, error)
+	FindAll(ctx context.Context) ([]*entity.Patient, error)
 }

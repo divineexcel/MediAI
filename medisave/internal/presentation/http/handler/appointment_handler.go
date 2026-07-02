@@ -24,8 +24,9 @@ func NewAppointmentHandler(apptService service.AppointmentService) *AppointmentH
 func (h *AppointmentHandler) List(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	p := pagination.FromContext(c)
+	status := c.Query("status")
 
-	appts, total, err := h.apptService.List(c.Request.Context(), claims.UserID, claims.Role, p)
+	appts, total, err := h.apptService.List(c.Request.Context(), claims.UserID, claims.Role, status, p)
 	if err != nil {
 		middleware.MapError(c, err)
 		return
