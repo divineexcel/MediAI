@@ -53,7 +53,7 @@ func NewConsultationRoomService(
 func (s *consultationRoomService) GetOrCreateRoom(ctx context.Context, userID uint, role entity.Role, appointmentID uint) (*RoomTokenResponse, error) {
 	appt, err := s.apptRepo.FindByID(ctx, appointmentID)
 	if err != nil {
-		return nil, pkgerrors.ErrAppointmentNotFound
+		return nil, err // preserve the real error (ErrAppointmentNotFound, ErrInternalServer, etc.)
 	}
 
 	// Verify caller is a participant of this appointment.
