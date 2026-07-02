@@ -27,6 +27,27 @@
   <span x-text="toast"></span>
 </div>
 
+<!-- Doctor Ready Banner — appears when doctor starts the consultation -->
+<div x-show="callReadyAppt" x-cloak
+  style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:70;width:100%;max-width:420px;padding:0 16px;">
+  <div style="background:#16a34a;border:2px solid #4ade80;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);">
+    <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:pulse 2s ease-in-out infinite;">
+      <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.362a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <p style="color:#fff;font-weight:700;font-size:.9rem;margin:0 0 2px;">Your doctor is ready!</p>
+      <p style="color:#bbf7d0;font-size:.78rem;margin:0;" x-text="callReadyAppt && callReadyAppt.doctor && callReadyAppt.doctor.user && callReadyAppt.doctor.user.first_name ? 'Dr. '+callReadyAppt.doctor.user.first_name+' '+callReadyAppt.doctor.user.last_name+' is waiting for you' : 'Your doctor is waiting'"></p>
+    </div>
+    <a :href="callReadyAppt ? '/consultation/'+callReadyAppt.id+'/call' : '#'"
+      style="padding:8px 14px;background:#fff;color:#15803d;border-radius:10px;font-size:.8rem;font-weight:700;text-decoration:none;flex-shrink:0;white-space:nowrap;">
+      Join Now →
+    </a>
+    <button @click="callReadyAppt=null" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.7);padding:2px;flex-shrink:0;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+</div>
+
 <!-- Book Appointment Modal -->
 <div x-show="showBookModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showBookModal=false">
   <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
@@ -265,7 +286,9 @@
               <!-- Actions -->
               <div class="flex gap-2">
                 <template x-if="appt.status==='in_progress'">
-                  <a :href="'/consultation/'+appt.id+'/call'" class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-semibold text-center hover:bg-secondary transition">Join Video Call</a>
+                  <a :href="'/consultation/'+appt.id+'/call'"
+                    class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-semibold text-center hover:bg-secondary transition animate-pulse"
+                    x-text="appt.type==='chat' ? 'Join Chat' : appt.type==='voice' ? 'Join Voice Call' : 'Join Video Call'"></a>
                 </template>
                 <template x-if="appt.status==='completed' && !appt.has_review">
                   <button @click="openReview(appt)" class="flex-1 py-2 border border-primary text-primary rounded-xl text-xs font-semibold hover:bg-accent transition">Leave Review ★</button>
@@ -406,10 +429,18 @@ function apptApp() {
     showCancelModal: false, cancelAppt: null, cancelLoading: false, cancelError: '', cancelReason: '',
     // Toast
     toast: '',
+    // Doctor ready banner
+    callReadyAppt: null,
 
     async init() {
       if (!localStorage.getItem('ms_token')) { window.location.href = '/login'; return; }
       await this.fetchAppointments();
+      // Track which appointments were already in_progress on load so we only
+      // alert for NEW transitions, not appointments that were already active.
+      this._knownInProgress = new Set(
+        (this.appointments || []).filter(a => a.status === 'in_progress').map(a => a.id)
+      );
+      this._startPolling();
     },
 
     async fetchAppointments() {
@@ -424,6 +455,29 @@ function apptApp() {
         }
       } catch(e) { this.appointments = []; }
       finally { this.loading = false; }
+    },
+
+    // Polls every 5 s for status changes without showing a loading spinner.
+    // When an appointment transitions to in_progress the doctor-ready banner
+    // is shown and Alpine.js reactivity reveals the Join button automatically.
+    _startPolling() {
+      setInterval(async () => {
+        if (document.hidden || this.loading) return;
+        try {
+          const params = new URLSearchParams({ page: this.currentPage, limit: 10 });
+          if (this.statusFilter !== 'all') params.set('status', this.statusFilter);
+          const r = await this.api('GET', `/api/v1/appointments?${params}`);
+          const fresh = r.data || [];
+          for (const appt of fresh) {
+            if (appt.status === 'in_progress' && !this._knownInProgress.has(appt.id)) {
+              this._knownInProgress.add(appt.id);
+              this.callReadyAppt = appt; // triggers banner
+            }
+          }
+          this.appointments = fresh;
+          if (r.meta) this.totalPages = r.meta.total_pages || 1;
+        } catch(_) { /* network blip — try again next tick */ }
+      }, 5000);
     },
 
     async fetchDoctors() {

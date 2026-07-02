@@ -268,7 +268,9 @@
                 </button>
               </template>
               <template x-if="appt.status==='in_progress'">
-                <a :href="'/consultation/'+appt.id+'/call'" class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition text-center">Join Video Call</a>
+                <a :href="'/consultation/'+appt.id+'/call'"
+                  class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition text-center"
+                  x-text="appt.type==='chat' ? 'Join Chat' : appt.type==='voice' ? 'Join Voice Call' : 'Join Video Call'"></a>
               </template>
               <template x-if="appt.status==='in_progress'">
                 <button @click="openConsult(appt)" class="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">Notes</button>
@@ -367,7 +369,11 @@ function doctorApptApp() {
         await this.api('PATCH', `/api/v1/appointments/${appt.id}/start`);
         appt.status = 'in_progress';
         await this.fetchToday();
-        this.showToast('Consultation started');
+        this.showToast('Consultation started — joining now…');
+        // Give the toast 1 s to display, then enter the call room.
+        // The patient will receive a live notification and their Join button
+        // will appear via the 5-second polling on their appointments page.
+        setTimeout(() => { window.location.href = `/consultation/${appt.id}/call`; }, 1200);
       } catch(e) { this.showToast(e.message || 'Failed to start consultation', 'error'); }
       finally { this.startLoading = null; }
     },

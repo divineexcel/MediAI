@@ -89,6 +89,22 @@
   </div>
 </div>
 
+<!-- ─── End Call button — floating above Jitsi, shown during active call ──── -->
+<div id="end-call-bar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:45;">
+  <button id="btn-end-call" onclick="endCall()" style="
+    display:flex;align-items:center;gap:9px;
+    background:#ef4444;color:#fff;border:none;cursor:pointer;
+    padding:14px 30px;border-radius:999px;
+    font-size:.95rem;font-weight:700;letter-spacing:.02em;
+    box-shadow:0 4px 24px rgba(239,68,68,.55);
+    transition:transform .1s,background .15s;">
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+    </svg>
+    End Call
+  </button>
+</div>
+
 <!-- ─── Call ended screen ─────────────────────────────────────────────────── -->
 <div id="ended-screen" class="overlay-screen" style="display:none;">
   <div style="text-align:center;padding:0 24px;">
@@ -96,15 +112,16 @@
       <svg width="36" height="36" fill="#9CA3AF" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
     </div>
     <p style="color:#fff;font-size:1.5rem;font-weight:700;margin-bottom:8px;">Consultation Ended</p>
-    <p id="call-duration" style="color:#9CA3AF;font-size:.875rem;margin-bottom:32px;"></p>
+    <p id="call-duration" style="color:#9CA3AF;font-size:.875rem;margin-bottom:8px;"></p>
+    <p id="complete-status" style="color:#86EFAC;font-size:.8rem;margin-bottom:28px;display:none;">Consultation marked as complete ✓</p>
     <div style="display:flex;gap:12px;justify-content:center;">
-      <button id="btn-back" style="
+      <button style="
         padding:12px 24px;background:rgba(255,255,255,.1);color:#fff;
         border:1px solid rgba(255,255,255,.15);border-radius:12px;
         font-weight:600;font-size:.9rem;cursor:pointer;" onclick="goBack()">
         Back to Appointments
       </button>
-      <button style="
+      <button id="btn-rejoin" style="
         padding:12px 24px;background:#0F9D58;color:#fff;
         border:none;border-radius:12px;
         font-weight:700;font-size:.9rem;cursor:pointer;" onclick="location.reload()">
@@ -119,33 +136,36 @@
 <!-- Jitsi Meet External API -->
 <script src="https://meet.jit.si/external_api.js"></script>
 <script>
+// Module-level state — accessible by endCall() and goBack() defined below the IIFE.
+let _callApi = null;
+let _callToken = '';
+let _callApptID = '0';
+let _callRole = 'patient';
+let _callStartTime = null;
+
 (async function() {
-  const token = localStorage.getItem('ms_token');
+  _callToken = localStorage.getItem('ms_token') || '';
   const userRaw = localStorage.getItem('ms_user');
-  if (!token) { window.location.href = '/login'; return; }
+  if (!_callToken) { window.location.href = '/login'; return; }
 
-  // ─── Parse appointment ID from URL (/consultation/:id/call) ─────────────
   const pathParts = window.location.pathname.split('/').filter(Boolean);
-  const apptID = pathParts[1] || '0';
+  _callApptID = pathParts[1] || '0';
 
-  // ─── State ───────────────────────────────────────────────────────────────
   let peerName = 'Connecting…';
   let peerInitials = '?';
   let myDisplayName = 'Me';
-  let callStartTime = null;
-  let durationInterval = null;
 
-  // ─── Fetch appointment to get real names ─────────────────────────────────
+  // ─── Fetch appointment details for display names ──────────────────────────
   try {
-    const res = await fetch(`/api/v1/appointments/${apptID}`, {
-      headers: { Authorization: 'Bearer ' + token }
+    const res = await fetch(`/api/v1/appointments/${_callApptID}`, {
+      headers: { Authorization: 'Bearer ' + _callToken }
     });
     if (res.ok) {
       const { data } = await res.json();
       const user = userRaw ? JSON.parse(userRaw) : {};
-      const role = user.role || 'patient';
+      _callRole = user.role || 'patient';
 
-      if (role === 'patient') {
+      if (_callRole === 'patient') {
         const d = data?.doctor?.user || {};
         peerName = d.first_name ? `Dr. ${d.first_name} ${d.last_name}` : 'Your Doctor';
         peerInitials = d.first_name ? `${d.first_name[0]}${d.last_name[0]}` : 'Dr';
@@ -163,15 +183,14 @@
     }
   } catch(_) {}
 
-  // Update waiting screen with real names
   document.getElementById('peer-name').textContent = peerName;
   document.getElementById('peer-initials').textContent = peerInitials;
   document.getElementById('status-label').textContent = 'Requesting camera & microphone…';
 
-  // ─── Request permissions ──────────────────────────────────────────────────
+  // ─── Request media permissions ────────────────────────────────────────────
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    stream.getTracks().forEach(t => t.stop()); // just checking permission
+    stream.getTracks().forEach(t => t.stop());
   } catch(e) {
     document.getElementById('status-label').textContent = 'Camera or microphone not available';
     document.getElementById('denied-msg').style.display = 'block';
@@ -182,17 +201,13 @@
   document.getElementById('status-label').textContent = `Joining consultation with ${peerName}…`;
 
   // ─── Launch Jitsi ─────────────────────────────────────────────────────────
-  // Room name is stable per appointment — both sides generate same name
-  const roomName = `medisave-consultation-${apptID}-secure`;
-
+  const roomName = `medisave-consultation-${_callApptID}-secure`;
   const container = document.getElementById('jitsi-container');
 
-  const api = new JitsiMeetExternalAPI('meet.jit.si', {
+  _callApi = new JitsiMeetExternalAPI('meet.jit.si', {
     roomName,
     parentNode: container,
-    userInfo: {
-      displayName: myDisplayName,
-    },
+    userInfo: { displayName: myDisplayName },
     configOverwrite: {
       startWithAudioMuted: false,
       startWithVideoMuted: false,
@@ -201,12 +216,14 @@
       disableDeepLinking: true,
       enableClosePage: false,
       defaultLanguage: 'en',
+      // 'hangup' intentionally omitted — use the End Call button below instead
+      // so the doctor's complete API call is always triggered on hang-up.
       toolbarButtons: [
         'microphone', 'camera', 'chat', 'desktop', 'fullscreen',
-        'fodeviceselection', 'hangup', 'participants-pane', 'raisehand',
+        'fodeviceselection', 'participants-pane', 'raisehand',
         'tileview', 'toggle-camera', 'videoquality'
       ],
-      subject: `MediSave Consultation`,
+      subject: 'MediSave Consultation',
     },
     interfaceConfigOverwrite: {
       SHOW_JITSI_WATERMARK: false,
@@ -224,33 +241,61 @@
   });
 
   // ─── Jitsi events ─────────────────────────────────────────────────────────
-  api.on('videoConferenceJoined', () => {
-    callStartTime = Date.now();
+  _callApi.on('videoConferenceJoined', () => {
+    _callStartTime = Date.now();
     document.getElementById('waiting-screen').style.display = 'none';
     container.style.display = 'block';
     document.getElementById('topbar').style.display = 'flex';
     document.getElementById('topbar-name').textContent = peerName;
+    document.getElementById('end-call-bar').style.display = 'block';
   });
 
-  api.on('videoConferenceLeft', () => {
+  _callApi.on('videoConferenceLeft', () => {
+    document.getElementById('end-call-bar').style.display = 'none';
     container.style.display = 'none';
     document.getElementById('topbar').style.display = 'none';
-    const secs = callStartTime ? Math.floor((Date.now() - callStartTime) / 1000) : 0;
+
+    const secs = _callStartTime ? Math.floor((Date.now() - _callStartTime) / 1000) : 0;
     const m = String(Math.floor(secs / 60)).padStart(2, '0');
     const s = String(secs % 60).padStart(2, '0');
     document.getElementById('call-duration').textContent = `Duration: ${m}:${s}`;
     document.getElementById('ended-screen').style.display = 'flex';
+
+    // Doctor: mark consultation complete. Fire-and-forget — the ended screen
+    // is already visible so the user isn't blocked on this network call.
+    if (_callRole === 'doctor') {
+      fetch(`/api/v1/appointments/${_callApptID}/complete`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': 'Bearer ' + _callToken,
+          'Content-Type': 'application/json'
+        }
+      }).then(r => {
+        if (r.ok) {
+          const el = document.getElementById('complete-status');
+          if (el) el.style.display = 'block';
+          // Hide rejoin — a completed consultation shouldn't be rejoined
+          const rejoin = document.getElementById('btn-rejoin');
+          if (rejoin) rejoin.style.display = 'none';
+        }
+      }).catch(() => {});
+    }
   });
 
-  api.on('readyToClose', () => {
-    api.dispose();
-  });
+  _callApi.on('readyToClose', () => { _callApi.dispose(); });
 
 })();
 
+// Hang up the call. videoConferenceLeft handles marking complete and
+// showing the ended screen, so this function only needs to trigger the hangup.
+function endCall() {
+  const btn = document.getElementById('btn-end-call');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = 'Ending…'; }
+  if (_callApi) _callApi.executeCommand('hangup');
+}
+
 function goBack() {
-  const user = JSON.parse(localStorage.getItem('ms_user') || '{}');
-  window.location.href = user.role === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
+  window.location.href = _callRole === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
 }
 </script>
 </body>
