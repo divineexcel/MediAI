@@ -4,663 +4,465 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Consultation | MediSave</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853'}}}}</script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
-    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-    html,body{height:100%;margin:0;font-family:'Inter',sans-serif;background:#0a0a0a;overflow:hidden;}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+    html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:#0a0a0a;overflow:hidden;}
 
-    /* Video elements */
-    #remote-video{
-      position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#111;
-      display:none;
-    }
-    #local-video{
-      position:fixed;bottom:100px;right:16px;width:100px;height:140px;
-      border-radius:14px;object-fit:cover;border:2px solid rgba(255,255,255,.2);
-      background:#1a1a1a;display:none;z-index:30;
-    }
-    /* Remote audio (voice mode) */
-    #remote-audio{display:none;}
+    /* ─── Shared layout ─────────────────────────────────── */
+    .fullscreen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 
-    /* Overlay screens */
-    .overlay-screen{
-      position:fixed;inset:0;z-index:50;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      background:linear-gradient(135deg,#0a0a0a 0%,#111827 100%);
-    }
-
-    @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:.75}}
-    .pulse{animation:pulse 2s ease-in-out infinite;}
-    @keyframes dot{0%,80%,100%{transform:scale(.55);opacity:.35}40%{transform:scale(1);opacity:1}}
-    .dot{width:9px;height:9px;border-radius:50%;background:#0F9D58;display:inline-block;}
-    .dot:nth-child(1){animation:dot 1.4s 0s infinite ease-in-out}
-    .dot:nth-child(2){animation:dot 1.4s .2s infinite ease-in-out}
-    .dot:nth-child(3){animation:dot 1.4s .4s infinite ease-in-out}
-
-    /* Voice-mode avatar (shown when no video) */
-    #voice-avatar{
-      position:absolute;inset:0;display:none;
-      align-items:center;justify-content:center;flex-direction:column;
-      background:linear-gradient(135deg,#111827,#0a0a0a);
-    }
-
-    /* Chat-only mode */
-    #chat-only-mode{
-      position:absolute;inset:0;display:none;flex-direction:column;
-      background:#0f0f0f;
-    }
-
-    /* Chat sidebar (for video/voice modes) */
-    #chat-panel{
-      position:fixed;right:0;top:0;bottom:0;width:300px;
-      background:#1a1a1a;border-left:1px solid rgba(255,255,255,.1);
-      display:none;flex-direction:column;z-index:35;
-      transition:transform .25s ease;
-    }
-    #chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
-
-    .chat-msg-self{align-self:flex-end;background:#0F9D58;color:#fff;padding:8px 12px;border-radius:18px 18px 4px 18px;font-size:.82rem;max-width:85%;word-wrap:break-word;}
-    .chat-msg-other{align-self:flex-start;background:#2a2a2a;color:#e5e7eb;padding:8px 12px;border-radius:18px 18px 18px 4px;font-size:.82rem;max-width:85%;word-wrap:break-word;}
-    .chat-sender{font-size:.7rem;color:#6b7280;margin-bottom:2px;}
-
-    /* Control bar */
-    #controls{
-      position:fixed;bottom:0;left:0;right:0;z-index:40;
-      padding:16px 20px 28px;
-      background:linear-gradient(to top,rgba(0,0,0,.85) 0%,transparent 100%);
-      display:none;justify-content:center;align-items:center;gap:16px;
-    }
-    .ctrl-btn{
-      width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;
+    /* ─── Loading / Waiting ─────────────────────────────── */
+    #waiting-screen{background:linear-gradient(135deg,#0a0a0a,#111827);z-index:60;}
+    @keyframes spin-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    #peer-avatar{
+      width:100px;height:100px;border-radius:50%;
+      background:linear-gradient(135deg,#0F9D58,#34A853);
       display:flex;align-items:center;justify-content:center;
-      transition:transform .15s,opacity .15s;font-size:0;
+      font-size:2rem;font-weight:700;color:#fff;
+      box-shadow:0 0 0 10px rgba(15,157,88,.12);
+      animation:spin-pulse 2s ease-in-out infinite;
+      margin-bottom:20px;
     }
-    .ctrl-btn:active{transform:scale(.9);}
-    .ctrl-btn-end{
-      width:64px;height:64px;background:#ef4444;
-      box-shadow:0 4px 20px rgba(239,68,68,.5);
-    }
-    .ctrl-btn-mute{background:rgba(255,255,255,.15);}
-    .ctrl-btn-cam{background:rgba(255,255,255,.15);}
-    .ctrl-btn-chat{background:rgba(255,255,255,.15);}
-    .ctrl-btn-off{background:rgba(239,68,68,.25);}
+    @keyframes bounce{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+    .dot{width:8px;height:8px;border-radius:50%;background:#0F9D58;display:inline-block;margin:0 3px;}
+    .dot:nth-child(1){animation:bounce 1.4s 0s infinite}
+    .dot:nth-child(2){animation:bounce 1.4s .2s infinite}
+    .dot:nth-child(3){animation:bounce 1.4s .4s infinite}
 
-    /* Topbar */
+    /* ─── Jitsi container ───────────────────────────────── */
+    #jitsi-container{
+      position:fixed;inset:0;
+      /* leave room at bottom for the End Call bar */
+      bottom:88px;
+    }
+    #jitsi-container iframe{width:100%;height:100%;border:none;}
+
+    /* ─── Top bar (peer name, timer) ────────────────────── */
     #topbar{
-      position:fixed;top:0;left:0;right:0;z-index:40;
-      display:none;align-items:center;justify-content:space-between;
+      position:fixed;top:0;left:0;right:0;z-index:50;
+      display:flex;align-items:center;justify-content:space-between;
       padding:14px 18px;
-      background:linear-gradient(to bottom,rgba(0,0,0,.75) 0%,transparent 100%);
+      background:linear-gradient(to bottom,rgba(0,0,0,.7) 0%,transparent 100%);
+      pointer-events:none;
     }
 
-    /* Notification badge */
-    #chat-badge{
-      position:absolute;top:2px;right:2px;width:10px;height:10px;
-      background:#ef4444;border-radius:50%;display:none;
+    /* ─── Chat-only UI ──────────────────────────────────── */
+    #chat-screen{
+      position:fixed;inset:0;background:#0f0f0f;
+      display:none;flex-direction:column;z-index:55;
     }
+    #chat-screen-header{
+      padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.1);
+      display:flex;align-items:center;gap:12px;flex-shrink:0;
+    }
+    #chat-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+    .msg-me{align-self:flex-end;background:#0F9D58;color:#fff;padding:9px 14px;border-radius:18px 18px 4px 18px;font-size:.85rem;max-width:80%;word-break:break-word;}
+    .msg-peer{align-self:flex-start;background:#1f2937;color:#e5e7eb;padding:9px 14px;border-radius:18px 18px 18px 4px;font-size:.85rem;max-width:80%;word-break:break-word;}
+    .msg-sender{font-size:.7rem;color:#6b7280;margin-bottom:3px;}
+    #chat-input-bar{
+      padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);
+      display:flex;gap:8px;align-items:center;flex-shrink:0;
+    }
+    #chat-input{
+      flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+      border-radius:12px;padding:10px 14px;color:#fff;font-size:.875rem;outline:none;
+    }
+    #chat-input::placeholder{color:#6b7280;}
+    #chat-send{
+      width:40px;height:40px;background:#0F9D58;border:none;border-radius:10px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    }
+
+    /* ─── End Call bar — ALWAYS on screen ──────────────── */
+    /* For video/voice: fixed bar above Jitsi */
+    /* For chat/waiting: bottom of the chat screen / waiting screen */
+    #end-bar{
+      position:fixed;bottom:0;left:0;right:0;z-index:70;
+      height:88px;
+      background:linear-gradient(to top,rgba(0,0,0,.9) 60%,transparent 100%);
+      display:flex;align-items:center;justify-content:center;gap:20px;
+    }
+    #btn-end{
+      display:flex;align-items:center;gap:8px;
+      background:#ef4444;color:#fff;border:none;
+      padding:15px 36px;border-radius:999px;
+      font-size:1rem;font-weight:700;cursor:pointer;
+      box-shadow:0 4px 24px rgba(239,68,68,.5);
+      transition:transform .1s,opacity .15s;
+    }
+    #btn-end:active{transform:scale(.96);}
+    #btn-end:disabled{opacity:.55;cursor:not-allowed;}
+
+    /* ─── Ended screen ──────────────────────────────────── */
+    #ended-screen{background:linear-gradient(135deg,#0a0a0a,#111827);z-index:65;display:none;}
   </style>
 </head>
 <body>
 
-<!-- ─── Loading / Waiting screen ─────────────────────────────────────────── -->
-<div id="waiting-screen" class="overlay-screen">
-  <div style="text-align:center">
-    <div id="peer-avatar" class="pulse" style="
-      width:112px;height:112px;border-radius:50%;margin:0 auto 20px;
-      display:flex;align-items:center;justify-content:center;
-      font-size:2.2rem;font-weight:700;color:#fff;
-      background:linear-gradient(135deg,#0F9D58,#34A853);
-      box-shadow:0 0 0 8px rgba(15,157,88,.15);">
-      <span id="peer-initials">?</span>
-    </div>
-    <p id="peer-name" style="color:#fff;font-size:1.25rem;font-weight:700;margin-bottom:6px;">Connecting…</p>
+<!-- ════════════════ WAITING / LOADING SCREEN ════════════════ -->
+<div id="waiting-screen" class="fullscreen">
+  <div style="text-align:center;padding:0 24px;">
+    <div id="peer-avatar"><span id="peer-initials">?</span></div>
+    <p id="peer-name" style="color:#fff;font-size:1.2rem;font-weight:700;margin-bottom:6px;">Connecting…</p>
     <p id="status-label" style="color:#9CA3AF;font-size:.875rem;margin-bottom:20px;">Setting up your secure consultation</p>
-    <div id="loading-dots" style="display:flex;gap:6px;justify-content:center;">
+    <div id="loading-dots" style="display:flex;justify-content:center;">
       <span class="dot"></span><span class="dot"></span><span class="dot"></span>
     </div>
-    <div id="error-msg" style="display:none;margin-top:24px;max-width:320px;padding:0 16px;">
-      <div style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:12px;padding:16px;">
-        <p id="error-title" style="color:#FCA5A5;font-size:.875rem;font-weight:600;margin-bottom:6px;">Connection Error</p>
-        <p id="error-body" style="color:#9CA3AF;font-size:.8rem;line-height:1.5;">Unable to join the consultation room.</p>
-      </div>
-      <button onclick="location.reload()" style="
-        margin-top:14px;padding:12px 28px;background:#0F9D58;color:#fff;
-        border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;">
-        Retry
-      </button>
+
+    <!-- Error box (hidden until needed) -->
+    <div id="error-box" style="display:none;margin-top:24px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:18px 20px;max-width:320px;margin-left:auto;margin-right:auto;">
+      <p id="error-title" style="color:#fca5a5;font-weight:700;font-size:.9rem;margin-bottom:6px;"></p>
+      <p id="error-body" style="color:#9ca3af;font-size:.82rem;line-height:1.5;"></p>
+      <button onclick="location.reload()" style="margin-top:14px;width:100%;padding:11px;background:#0F9D58;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;">Retry</button>
     </div>
   </div>
 </div>
 
-<!-- ─── Remote video (video mode) ─────────────────────────────────────────── -->
-<video id="remote-video" autoplay playsinline></video>
-<!-- ─── Local camera (PiP) ───────────────────────────────────────────────── -->
-<video id="local-video" autoplay playsinline muted></video>
-<!-- ─── Remote audio (voice mode) ────────────────────────────────────────── -->
-<audio id="remote-audio" autoplay></audio>
+<!-- ════════════════ JITSI (video / voice) ════════════════ -->
+<div id="jitsi-container" style="display:none;"></div>
 
-<!-- ─── Voice mode avatar ────────────────────────────────────────────────── -->
-<div id="voice-avatar">
-  <div class="pulse" style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:#fff;margin-bottom:16px;">
-    <span id="voice-initials">?</span>
-  </div>
-  <p id="voice-name" style="color:#fff;font-size:1.1rem;font-weight:700;"></p>
-  <p style="color:#86EFAC;font-size:.8rem;margin-top:4px;">Voice Call Active</p>
-</div>
-
-<!-- ─── Chat-only mode ───────────────────────────────────────────────────── -->
-<div id="chat-only-mode">
-  <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:12px;">
-    <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:#fff;flex-shrink:0;">
-      <span id="chat-peer-initials">?</span>
-    </div>
-    <div>
-      <p id="chat-peer-name" style="color:#fff;font-size:.9rem;font-weight:700;"></p>
-      <p style="color:#86EFAC;font-size:.72rem;">MediSave Secure Chat</p>
-    </div>
-  </div>
-  <div id="chat-only-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;"></div>
-  <div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,.1);display:flex;gap:8px;align-items:center;">
-    <input id="chat-only-input" type="text" placeholder="Type a message…"
-      style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 14px;color:#fff;font-size:.85rem;outline:none;"
-      onkeydown="if(event.key==='Enter')sendChat()">
-    <button onclick="sendChat()" style="width:40px;height:40px;border-radius:10px;background:#0F9D58;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-    </button>
-  </div>
-  <!-- End call for chat mode -->
-  <div style="padding:12px 16px;padding-bottom:28px;border-top:1px solid rgba(255,255,255,.05);display:flex;justify-content:center;">
-    <button onclick="endCall()" style="padding:12px 32px;background:#ef4444;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;">
-      End Chat
-    </button>
-  </div>
-</div>
-
-<!-- ─── Chat sidebar (for video/voice) ───────────────────────────────────── -->
-<div id="chat-panel">
-  <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between;">
-    <p style="color:#fff;font-size:.9rem;font-weight:600;">Chat</p>
-    <button onclick="toggleChat()" style="background:none;border:none;cursor:pointer;color:#9CA3AF;">
-      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-  </div>
-  <div id="chat-messages"></div>
-  <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,.1);display:flex;gap:8px;align-items:center;">
-    <input id="chat-input" type="text" placeholder="Type a message…"
-      style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 12px;color:#fff;font-size:.82rem;outline:none;"
-      onkeydown="if(event.key==='Enter')sendChat()">
-    <button onclick="sendChat()" style="width:36px;height:36px;border-radius:8px;background:#0F9D58;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-    </button>
-  </div>
-</div>
-
-<!-- ─── Top brand bar ─────────────────────────────────────────────────────── -->
-<div id="topbar">
+<!-- Top bar — shown after Jitsi joins -->
+<div id="topbar" style="display:none;">
   <div style="display:flex;align-items:center;gap:10px;">
     <div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;">
       <svg width="16" height="16" fill="white" viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.518 3.949 1 6.818 1c1.947 0 3.876.876 5.182 2.5C13.306 1.876 15.235 1 17.182 1 20.051 1 23 3.518 23 7.191c0 4.105-5.37 8.863-11 14.402z"/></svg>
     </div>
     <div>
-      <p id="topbar-name" style="color:#fff;font-size:.85rem;font-weight:700;line-height:1.2;"></p>
-      <p style="color:#86EFAC;font-size:.72rem;font-weight:500;">MediSave Secure Consultation</p>
+      <p id="topbar-peer" style="color:#fff;font-size:.85rem;font-weight:700;line-height:1.2;"></p>
+      <p style="color:#86EFAC;font-size:.72rem;">MediSave Secure Consultation</p>
     </div>
   </div>
-  <div id="call-timer" style="color:#9CA3AF;font-size:.8rem;font-weight:500;">00:00</div>
+  <p id="call-timer" style="color:#9CA3AF;font-size:.8rem;font-weight:500;">00:00</p>
 </div>
 
-<!-- ─── Control bar ───────────────────────────────────────────────────────── -->
-<div id="controls">
-  <button id="btn-mic" class="ctrl-btn ctrl-btn-mute" onclick="toggleMic()" title="Toggle microphone">
-    <svg id="icon-mic" width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zm-1 3a1 1 0 012 0v8a1 1 0 01-2 0V4zM7 11a5 5 0 0010 0h2a7 7 0 01-6 6.92V21h-2v-3.08A7 7 0 015 11h2z"/></svg>
-    <svg id="icon-mic-off" width="22" height="22" fill="white" viewBox="0 0 24 24" style="display:none"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>
-  </button>
-
-  <button id="btn-cam" class="ctrl-btn ctrl-btn-cam" onclick="toggleCam()" title="Toggle camera" style="display:none;">
-    <svg id="icon-cam" width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-    <svg id="icon-cam-off" width="22" height="22" fill="white" viewBox="0 0 24 24" style="display:none"><path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/></svg>
-  </button>
-
-  <button class="ctrl-btn ctrl-btn-end" onclick="endCall()" title="End call">
-    <svg width="26" height="26" fill="white" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
-  </button>
-
-  <div style="position:relative;">
-    <button id="btn-chat" class="ctrl-btn ctrl-btn-chat" onclick="toggleChat()" title="Toggle chat">
-      <svg width="22" height="22" fill="white" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-      <span id="chat-badge"></span>
+<!-- ════════════════ CHAT-ONLY SCREEN ════════════════ -->
+<div id="chat-screen">
+  <div id="chat-screen-header">
+    <div id="chat-avatar" style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#fff;flex-shrink:0;">?</div>
+    <div>
+      <p id="chat-peer-label" style="color:#fff;font-size:.9rem;font-weight:700;"></p>
+      <p style="color:#86EFAC;font-size:.72rem;">MediSave Secure Chat</p>
+    </div>
+  </div>
+  <div id="chat-msgs"></div>
+  <div id="chat-input-bar">
+    <input id="chat-input" type="text" placeholder="Type a message…" autocomplete="off"
+      onkeydown="if(event.key==='Enter')sendChatMsg()"/>
+    <button id="chat-send" onclick="sendChatMsg()">
+      <svg width="18" height="18" fill="white" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
     </button>
   </div>
 </div>
 
-<!-- ─── Call ended screen ─────────────────────────────────────────────────── -->
-<div id="ended-screen" class="overlay-screen" style="display:none;">
-  <div style="text-align:center;padding:0 24px;">
-    <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-      <svg width="36" height="36" fill="#9CA3AF" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+<!-- ════════════════ END CALL BAR — always on screen ════════════════ -->
+<div id="end-bar">
+  <button id="btn-end" onclick="endCall()">
+    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+    </svg>
+    End Call
+  </button>
+</div>
+
+<!-- ════════════════ ENDED SCREEN ════════════════ -->
+<div id="ended-screen" class="fullscreen" style="display:none;">
+  <div style="text-align:center;padding:0 28px;">
+    <div style="width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+      <svg width="34" height="34" fill="#6B7280" viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
     </div>
-    <p style="color:#fff;font-size:1.5rem;font-weight:700;margin-bottom:8px;">Consultation Ended</p>
-    <p id="call-duration" style="color:#9CA3AF;font-size:.875rem;margin-bottom:8px;"></p>
-    <p id="complete-status" style="color:#86EFAC;font-size:.8rem;margin-bottom:28px;display:none;">Consultation marked as complete ✓</p>
-    <div style="display:flex;gap:12px;justify-content:center;">
-      <button style="
-        padding:12px 24px;background:rgba(255,255,255,.1);color:#fff;
-        border:1px solid rgba(255,255,255,.15);border-radius:12px;
-        font-weight:600;font-size:.9rem;cursor:pointer;" onclick="goBack()">
+    <p style="color:#fff;font-size:1.4rem;font-weight:700;margin-bottom:8px;">Consultation Ended</p>
+    <p id="ended-duration" style="color:#9CA3AF;font-size:.875rem;margin-bottom:8px;"></p>
+    <p id="ended-complete" style="color:#86EFAC;font-size:.82rem;margin-bottom:28px;display:none;">Consultation marked as complete ✓</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button onclick="goBack()" style="padding:12px 24px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:12px;font-weight:600;font-size:.9rem;cursor:pointer;">
         Back to Appointments
       </button>
-      <button id="btn-rejoin" style="
-        padding:12px 24px;background:#0F9D58;color:#fff;
-        border:none;border-radius:12px;
-        font-weight:700;font-size:.9rem;cursor:pointer;" onclick="location.reload()">
+      <button id="btn-rejoin" onclick="location.reload()" style="padding:12px 24px;background:#0F9D58;color:#fff;border:none;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer;">
         Rejoin
       </button>
     </div>
   </div>
 </div>
 
-<!-- LiveKit client SDK (UMD build, no build step needed) -->
-<script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script src="https://meet.jit.si/external_api.js"></script>
 <script>
-// ─── Module-level state ───────────────────────────────────────────────────────
-let _token = '';
-let _apptID = '0';
-let _role   = 'patient';
-let _apptType = 'video'; // 'video' | 'voice' | 'chat'
-let _room   = null;
-let _micPub = null;
-let _camPub = null;
-let _micOn  = true;
-let _camOn  = true;
-let _startTime = null;
-let _timerInterval = null;
-let _myName = 'Me';
-let _peerName = 'Peer';
-let _chatPanelOpen = false;
-let _unreadChat = 0;
-const _encoder = new TextEncoder();
-const _decoder = new TextDecoder();
+// ─── State ────────────────────────────────────────────────────────────────────
+let _msToken  = '';
+let _apptID   = '0';
+let _role     = 'patient';
+let _apptType = 'video';
+let _peerName = 'Connecting…';
+let _myName   = 'Me';
+let _jitsi    = null;
+let _startAt  = null;
+let _timerID  = null;
+let _chatPollID = null;
+let _lastMsgID  = 0;
 
-(async function init() {
-  _token = localStorage.getItem('ms_token') || '';
-  if (!_token) { window.location.href = '/login'; return; }
+// ─── Bootstrap ────────────────────────────────────────────────────────────────
+(async function() {
+  _msToken = localStorage.getItem('ms_token') || '';
+  if (!_msToken) { window.location.href = '/login'; return; }
 
-  const pathParts = window.location.pathname.split('/').filter(Boolean);
-  _apptID = pathParts[1] || '0';
+  const parts = location.pathname.split('/').filter(Boolean);
+  _apptID   = parts[1] || '0';
+  const user = JSON.parse(localStorage.getItem('ms_user') || '{}');
+  _role      = user.role || 'patient';
 
-  const userRaw = localStorage.getItem('ms_user');
-  const user    = userRaw ? JSON.parse(userRaw) : {};
-  _role = user.role || 'patient';
-
-  // Fetch appointment for display names and type
+  // 1. Load appointment details for display names and type
   try {
-    const res = await fetch(`/api/v1/appointments/${_apptID}`, {
-      headers: { Authorization: 'Bearer ' + _token }
-    });
-    if (res.ok) {
-      const { data } = await res.json();
+    const r = await authFetch(`/api/v1/appointments/${_apptID}`);
+    if (r.ok) {
+      const { data } = await r.json();
       _apptType = data?.type || 'video';
       if (_role === 'patient') {
         const d = data?.doctor?.user || {};
         _peerName = d.first_name ? `Dr. ${d.first_name} ${d.last_name}` : 'Your Doctor';
-        _myName   = data?.patient?.user?.first_name
-          ? `${data.patient.user.first_name} ${data.patient.user.last_name}`
-          : (user.first_name || 'Patient');
+        _myName   = `${data?.patient?.user?.first_name || user.first_name || 'Patient'} ${data?.patient?.user?.last_name || user.last_name || ''}`.trim();
       } else {
         const p = data?.patient?.user || {};
         _peerName = p.first_name ? `${p.first_name} ${p.last_name}` : 'Patient';
-        _myName   = user.first_name ? `Dr. ${user.first_name} ${user.last_name}` : 'Doctor';
+        _myName   = `Dr. ${data?.doctor?.user?.first_name || user.first_name || ''} ${data?.doctor?.user?.last_name || user.last_name || ''}`.trim();
       }
     }
   } catch(_) {}
 
-  // Update waiting screen
-  const initials = _peerName.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase() || '?';
-  document.getElementById('peer-initials').textContent = initials;
-  document.getElementById('peer-name').textContent = _peerName;
-  document.getElementById('status-label').textContent = 'Requesting room access…';
+  setWaiting(_peerName, 'Verifying access…');
 
-  // Get LiveKit token from backend
-  let roomInfo;
+  // 2. Get room token (auth check + room name)
+  let roomName;
   try {
-    const r = await fetch(`/api/v1/appointments/${_apptID}/room-token`, {
-      headers: { Authorization: 'Bearer ' + _token }
-    });
+    const r = await authFetch(`/api/v1/appointments/${_apptID}/room-token`);
     const body = await r.json();
     if (!r.ok) {
-      showError('Access Denied', body.message || 'You are not a participant of this consultation.');
+      showError('Access Denied', body.message || 'You are not a participant of this consultation, or it has not started yet.');
       return;
     }
-    roomInfo = body.data;
+    roomName = body.data.room_name;
   } catch(e) {
-    showError('Connection Error', 'Failed to reach the server. Please retry.');
+    showError('Connection Error', 'Could not reach the server. Please check your connection and retry.');
     return;
   }
 
-  document.getElementById('status-label').textContent = `Connecting to ${_peerName}…`;
-
-  // For non-chat types, request media permissions
-  if (_apptType !== 'chat') {
-    try {
-      const constraints = _apptType === 'video'
-        ? { video: true, audio: true }
-        : { audio: true, video: false };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      stream.getTracks().forEach(t => t.stop());
-    } catch(e) {
-      if (_apptType === 'video') {
-        // Fall back to voice-only if camera denied
-        _apptType = 'voice';
-      } else {
-        showError('Microphone Blocked', 'Allow microphone access in your browser settings, then click Retry.');
-        return;
-      }
-    }
-  }
-
-  // Connect to LiveKit
-  const { Room, RoomEvent, Track, VideoPresets } = LivekitClient;
-  _room = new Room({
-    adaptiveStream: true,
-    dynacast: true,
-    videoCaptureDefaults: { resolution: VideoPresets.h360.resolution },
-  });
-
-  _room.on(RoomEvent.Connected, onConnected);
-  _room.on(RoomEvent.Disconnected, onDisconnected);
-  _room.on(RoomEvent.TrackSubscribed, onTrackSubscribed);
-  _room.on(RoomEvent.TrackUnsubscribed, onTrackUnsubscribed);
-  _room.on(RoomEvent.DataReceived, onDataReceived);
-  _room.on(RoomEvent.ParticipantConnected, p => {
-    appendSystemMsg(`${_peerName} joined`);
-  });
-  _room.on(RoomEvent.ParticipantDisconnected, p => {
-    appendSystemMsg(`${_peerName} left the room`);
-    clearRemoteMedia();
-  });
-
-  try {
-    await _room.connect(roomInfo.ws_url, roomInfo.token);
-  } catch(e) {
-    showError('Cannot Connect', `LiveKit server unreachable. Make sure the server is running at ${roomInfo.ws_url}.`);
-    return;
+  // 3. Branch: chat-only vs video/voice
+  if (_apptType === 'chat') {
+    launchChat();
+  } else {
+    launchJitsi(roomName);
   }
 })();
 
-// ─── Room events ──────────────────────────────────────────────────────────────
+// ─── Jitsi (video / voice) ────────────────────────────────────────────────────
+function launchJitsi(roomName) {
+  setWaiting(_peerName, `Joining ${_apptType} call…`);
 
-async function onConnected() {
-  const { createLocalTracks, Track } = LivekitClient;
-  _startTime = Date.now();
-  startTimer();
+  const isVoice = (_apptType === 'voice');
 
-  // Hide waiting screen, show appropriate UI
+  _jitsi = new JitsiMeetExternalAPI('meet.jit.si', {
+    roomName,
+    parentNode: document.getElementById('jitsi-container'),
+    userInfo:   { displayName: _myName },
+    configOverwrite: {
+      startWithAudioMuted:  false,
+      startWithVideoMuted:  isVoice, // voice = no camera
+      enableWelcomePage:    false,
+      prejoinPageEnabled:   false,
+      disableDeepLinking:   true,
+      enableClosePage:      false,
+      defaultLanguage:      'en',
+      subject:              'MediSave Consultation',
+      // Remove hangup from toolbar — our End Call button is the only exit path
+      toolbarButtons: isVoice
+        ? ['microphone', 'chat', 'raisehand', 'tileview']
+        : ['microphone', 'camera', 'chat', 'desktop', 'fullscreen',
+           'fodeviceselection', 'participants-pane', 'raisehand', 'tileview',
+           'toggle-camera', 'videoquality'],
+    },
+    interfaceConfigOverwrite: {
+      SHOW_JITSI_WATERMARK:  false,
+      SHOW_WATERMARK_FOR_GUESTS: false,
+      SHOW_BRAND_WATERMARK:  false,
+      SHOW_POWERED_BY:       false,
+      APP_NAME:              'MediSave',
+      HIDE_INVITE_MORE_HEADER: true,
+      MOBILE_APP_PROMO:      false,
+    },
+  });
+
+  _jitsi.on('videoConferenceJoined', () => {
+    _startAt = Date.now();
+    startTimer();
+
+    // Hide waiting screen, show Jitsi
+    document.getElementById('waiting-screen').style.display = 'none';
+    document.getElementById('jitsi-container').style.display = 'block';
+    document.getElementById('topbar').style.display = 'flex';
+    document.getElementById('topbar-peer').textContent = _peerName;
+  });
+
+  _jitsi.on('videoConferenceLeft', onCallEnded);
+  _jitsi.on('readyToClose', () => { if (_jitsi) { _jitsi.dispose(); _jitsi = null; } });
+}
+
+// ─── Chat-only ────────────────────────────────────────────────────────────────
+function launchChat() {
+  const initials = _peerName.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase() || '?';
+  document.getElementById('chat-avatar').textContent = initials;
+  document.getElementById('chat-peer-label').textContent = _peerName;
+
   document.getElementById('waiting-screen').style.display = 'none';
-  document.getElementById('topbar').style.display = 'flex';
-  document.getElementById('topbar-name').textContent = _peerName;
-  document.getElementById('controls').style.display = 'flex';
+  document.getElementById('chat-screen').style.display    = 'flex';
 
-  if (_apptType === 'chat') {
-    // Chat-only mode
-    document.getElementById('chat-only-mode').style.display = 'flex';
-    document.getElementById('chat-peer-initials').textContent =
-      _peerName.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase();
-    document.getElementById('chat-peer-name').textContent = _peerName;
-    document.getElementById('controls').style.display = 'none';
-    return;
-  }
+  _startAt = Date.now();
+  // Poll messages every 2 s
+  loadChatMessages();
+  _chatPollID = setInterval(loadChatMessages, 2000);
+}
 
-  if (_apptType === 'voice') {
-    // Voice mode — no video tracks
-    const voiceAvatar = document.getElementById('voice-avatar');
-    voiceAvatar.style.display = 'flex';
-    document.getElementById('voice-initials').textContent =
-      _peerName.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase();
-    document.getElementById('voice-name').textContent = _peerName;
-    document.getElementById('btn-cam').style.display = 'none';
-
-    const [audioTrack] = await createLocalTracks({ audio: true, video: false });
-    _micPub = await _room.localParticipant.publishTrack(audioTrack);
-    return;
-  }
-
-  // Video mode
-  document.getElementById('btn-cam').style.display = 'flex';
+async function loadChatMessages() {
   try {
-    const tracks = await createLocalTracks({ audio: true, video: true });
-    for (const track of tracks) {
-      const pub = await _room.localParticipant.publishTrack(track);
-      if (track.kind === Track.Kind.Audio) _micPub = pub;
-      if (track.kind === Track.Kind.Video) {
-        _camPub = pub;
-        document.getElementById('local-video').srcObject = new MediaStream([track.mediaStreamTrack]);
-        document.getElementById('local-video').style.display = 'block';
+    const r = await authFetch(`/api/v1/consultations/${_apptID}/messages`);
+    if (!r.ok) return;
+    const { data } = await r.json();
+    const msgs = data || [];
+    const container = document.getElementById('chat-msgs');
+    msgs.forEach(m => {
+      if (m.id <= _lastMsgID) return;
+      _lastMsgID = m.id;
+      const isMe = (m.sender_role === _role);
+      const wrap = document.createElement('div');
+      if (!isMe) {
+        const s = document.createElement('div');
+        s.className = 'msg-sender';
+        s.textContent = _peerName;
+        wrap.appendChild(s);
       }
-    }
-  } catch(e) {
-    // Camera failed — fall back to audio only
-    _apptType = 'voice';
-    document.getElementById('btn-cam').style.display = 'none';
-    try {
-      const [audioTrack] = await LivekitClient.createLocalTracks({ audio: true, video: false });
-      _micPub = await _room.localParticipant.publishTrack(audioTrack);
-    } catch(_) {}
-  }
-}
-
-function onDisconnected() {
-  stopTimer();
-  showEndedScreen();
-}
-
-function onTrackSubscribed(track, pub, participant) {
-  const { Track } = LivekitClient;
-  if (track.kind === Track.Kind.Video) {
-    const rv = document.getElementById('remote-video');
-    rv.srcObject = new MediaStream([track.mediaStreamTrack]);
-    rv.style.display = 'block';
-    // Hide voice avatar now that we have video
-    document.getElementById('voice-avatar').style.display = 'none';
-  }
-  if (track.kind === Track.Kind.Audio) {
-    const ra = document.getElementById('remote-audio');
-    ra.srcObject = new MediaStream([track.mediaStreamTrack]);
-    ra.play().catch(() => {});
-  }
-}
-
-function onTrackUnsubscribed(track) {
-  const { Track } = LivekitClient;
-  if (track.kind === Track.Kind.Video) {
-    document.getElementById('remote-video').style.display = 'none';
-    if (_apptType === 'voice') {
-      document.getElementById('voice-avatar').style.display = 'flex';
-    }
-  }
-}
-
-function onDataReceived(data, participant) {
-  try {
-    const msg = JSON.parse(_decoder.decode(data));
-    const isMe = !participant || participant.identity === _room?.localParticipant?.identity;
-    appendChatMsg(msg.name || _peerName, msg.text, isMe);
+      const bubble = document.createElement('div');
+      bubble.className = isMe ? 'msg-me' : 'msg-peer';
+      bubble.textContent = m.message;
+      wrap.appendChild(bubble);
+      container.appendChild(wrap);
+      container.scrollTop = container.scrollHeight;
+    });
   } catch(_) {}
 }
 
-function clearRemoteMedia() {
-  const rv = document.getElementById('remote-video');
-  rv.srcObject = null;
-  rv.style.display = 'none';
-}
-
-// ─── Media controls ───────────────────────────────────────────────────────────
-
-function toggleMic() {
-  if (!_room) return;
-  _micOn = !_micOn;
-  _room.localParticipant.setMicrophoneEnabled(_micOn);
-  document.getElementById('icon-mic').style.display    = _micOn ? '' : 'none';
-  document.getElementById('icon-mic-off').style.display = _micOn ? 'none' : '';
-  document.getElementById('btn-mic').className = _micOn
-    ? 'ctrl-btn ctrl-btn-mute'
-    : 'ctrl-btn ctrl-btn-off';
-}
-
-function toggleCam() {
-  if (!_room) return;
-  _camOn = !_camOn;
-  _room.localParticipant.setCameraEnabled(_camOn);
-  document.getElementById('icon-cam').style.display    = _camOn ? '' : 'none';
-  document.getElementById('icon-cam-off').style.display = _camOn ? 'none' : '';
-  document.getElementById('btn-cam').className = _camOn
-    ? 'ctrl-btn ctrl-btn-cam'
-    : 'ctrl-btn ctrl-btn-off';
-  document.getElementById('local-video').style.display = _camOn ? 'block' : 'none';
-}
-
-// ─── Chat ─────────────────────────────────────────────────────────────────────
-
-function toggleChat() {
-  _chatPanelOpen = !_chatPanelOpen;
-  const panel = document.getElementById('chat-panel');
-  panel.style.display = _chatPanelOpen ? 'flex' : 'none';
-  if (_chatPanelOpen) {
-    _unreadChat = 0;
-    document.getElementById('chat-badge').style.display = 'none';
-    const msgs = document.getElementById('chat-messages');
-    msgs.scrollTop = msgs.scrollHeight;
-    document.getElementById('chat-input').focus();
-  }
-}
-
-function sendChat() {
-  const input = document.getElementById(
-    _apptType === 'chat' ? 'chat-only-input' : 'chat-input'
-  );
-  const text = input.value.trim();
-  if (!text || !_room) return;
+async function sendChatMsg() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
   input.value = '';
 
-  const payload = JSON.stringify({ name: _myName, text });
-  _room.localParticipant.publishData(_encoder.encode(payload), { reliable: true });
-  appendChatMsg(_myName, text, true);
-}
+  // Optimistic UI
+  const container = document.getElementById('chat-msgs');
+  const wrap = document.createElement('div');
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-me';
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
 
-function appendChatMsg(name, text, isMe) {
-  const msgEl = document.createElement('div');
-  msgEl.className = isMe ? 'chat-msg-self' : 'chat-msg-other';
-  if (!isMe) {
-    const senderEl = document.createElement('div');
-    senderEl.className = 'chat-sender';
-    senderEl.textContent = name;
-    msgEl.appendChild(senderEl);
-  }
-  const textEl = document.createElement('div');
-  textEl.textContent = text;
-  msgEl.appendChild(textEl);
-
-  // Add to both panels (one is hidden, doesn't matter)
-  ['chat-messages', 'chat-only-messages'].forEach(id => {
-    const container = document.getElementById(id);
-    if (container) {
-      const clone = msgEl.cloneNode(true);
-      container.appendChild(clone);
-      container.scrollTop = container.scrollHeight;
-    }
-  });
-
-  if (!isMe && !_chatPanelOpen && _apptType !== 'chat') {
-    _unreadChat++;
-    const badge = document.getElementById('chat-badge');
-    badge.style.display = 'block';
-  }
-}
-
-function appendSystemMsg(text) {
-  ['chat-messages', 'chat-only-messages'].forEach(id => {
-    const container = document.getElementById(id);
-    if (!container) return;
-    const el = document.createElement('div');
-    el.style.cssText = 'text-align:center;color:#6b7280;font-size:.75rem;padding:4px 0;';
-    el.textContent = text;
-    container.appendChild(el);
-    container.scrollTop = container.scrollHeight;
-  });
-}
-
-// ─── Call lifecycle ───────────────────────────────────────────────────────────
-
-async function endCall() {
-  if (_room) {
-    await _room.disconnect();
-  } else {
-    showEndedScreen();
-  }
-}
-
-function showEndedScreen() {
-  // Hide all active UI
-  ['remote-video','local-video','voice-avatar','chat-only-mode','topbar','controls','chat-panel']
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
+  try {
+    await authFetch(`/api/v1/consultations/${_apptID}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ message: text }),
     });
+  } catch(_) {}
+}
 
-  const secs  = _startTime ? Math.floor((Date.now() - _startTime) / 1000) : 0;
-  const m = String(Math.floor(secs / 60)).padStart(2, '0');
-  const s = String(secs % 60).padStart(2, '0');
-  document.getElementById('call-duration').textContent = `Duration: ${m}:${s}`;
+// ─── End Call ─────────────────────────────────────────────────────────────────
+async function endCall() {
+  const btn = document.getElementById('btn-end');
+  btn.disabled = true;
+  btn.textContent = 'Ending…';
+
+  if (_apptType === 'chat') {
+    clearInterval(_chatPollID);
+    onCallEnded();
+  } else if (_jitsi) {
+    _jitsi.executeCommand('hangup');
+    // onCallEnded fires via videoConferenceLeft event
+    // Safety fallback in case event doesn't fire
+    setTimeout(onCallEnded, 2500);
+  } else {
+    onCallEnded();
+  }
+}
+
+function onCallEnded() {
+  stopTimer();
+  if (_jitsi) { try { _jitsi.dispose(); } catch(_) {} _jitsi = null; }
+
+  // Hide all active UI
+  ['waiting-screen','jitsi-container','topbar','chat-screen','end-bar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  const secs = _startAt ? Math.floor((Date.now() - _startAt) / 1000) : 0;
+  const m = String(Math.floor(secs / 60)).padStart(2,'0');
+  const s = String(secs % 60).padStart(2,'0');
+  document.getElementById('ended-duration').textContent = `Duration: ${m}:${s}`;
   document.getElementById('ended-screen').style.display = 'flex';
 
-  // Doctor: mark consultation complete
+  // Doctor: mark consultation as complete
   if (_role === 'doctor') {
-    fetch(`/api/v1/appointments/${_apptID}/complete`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': 'Bearer ' + _token,
-        'Content-Type': 'application/json'
-      }
-    }).then(r => {
-      if (r.ok) {
-        const el = document.getElementById('complete-status');
-        if (el) el.style.display = 'block';
-        const rejoin = document.getElementById('btn-rejoin');
-        if (rejoin) rejoin.style.display = 'none';
-      }
-    }).catch(() => {});
+    authFetch(`/api/v1/appointments/${_apptID}/complete`, { method: 'PATCH' })
+      .then(r => {
+        if (r.ok) {
+          document.getElementById('ended-complete').style.display = 'block';
+          const rejoin = document.getElementById('btn-rejoin');
+          if (rejoin) rejoin.style.display = 'none';
+        }
+      })
+      .catch(() => {});
   }
 }
 
 function goBack() {
-  window.location.href = _role === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
+  location.href = _role === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
 }
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
-
 function startTimer() {
-  _timerInterval = setInterval(() => {
-    if (!_startTime) return;
-    const secs = Math.floor((Date.now() - _startTime) / 1000);
-    const m = String(Math.floor(secs / 60)).padStart(2, '0');
-    const s = String(secs % 60).padStart(2, '0');
-    document.getElementById('call-timer').textContent = `${m}:${s}`;
+  _timerID = setInterval(() => {
+    const secs = Math.floor((Date.now() - _startAt) / 1000);
+    const m = String(Math.floor(secs / 60)).padStart(2,'0');
+    const s = String(secs % 60).padStart(2,'0');
+    const el = document.getElementById('call-timer');
+    if (el) el.textContent = `${m}:${s}`;
   }, 1000);
 }
+function stopTimer() { clearInterval(_timerID); }
 
-function stopTimer() {
-  clearInterval(_timerInterval);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function authFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + _msToken,
+      ...(opts.headers || {}),
+    },
+  });
 }
 
-// ─── Error display ────────────────────────────────────────────────────────────
+function setWaiting(name, status) {
+  const initials = name.split(' ').map(w => w[0] || '').join('').slice(0,2).toUpperCase() || '?';
+  document.getElementById('peer-initials').textContent  = initials;
+  document.getElementById('peer-name').textContent      = name;
+  document.getElementById('status-label').textContent   = status;
+}
 
 function showError(title, body) {
   document.getElementById('loading-dots').style.display = 'none';
   document.getElementById('status-label').style.display = 'none';
-  document.getElementById('error-title').textContent = title;
-  document.getElementById('error-body').textContent  = body;
-  document.getElementById('error-msg').style.display  = 'block';
+  document.getElementById('error-title').textContent    = title;
+  document.getElementById('error-body').textContent     = body;
+  document.getElementById('error-box').style.display    = 'block';
+  // Keep End Call button but change label to "Leave"
+  document.getElementById('btn-end').textContent        = 'Leave';
 }
 </script>
 </body>

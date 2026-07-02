@@ -17,7 +17,7 @@
     [x-cloak]{display:none!important;}
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="apptApp()" x-init="init()" x-cloak>
+<body class="bg-gray-50 min-h-screen" x-data="apptApp()" x-init="init()" @beforeunload.window="stopRing()" x-cloak>
 
 <!-- Success Toast -->
 <div x-show="toast" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
@@ -27,24 +27,61 @@
   <span x-text="toast"></span>
 </div>
 
-<!-- Doctor Ready Banner — appears when doctor starts the consultation -->
+<!-- ════ INCOMING CALL OVERLAY — full screen ring when doctor starts ════ -->
+<style>
+  @keyframes ring-pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(15,157,88,.6)}50%{transform:scale(1.06);box-shadow:0 0 0 18px rgba(15,157,88,0)}}
+  @keyframes ring-wave{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.2);opacity:0}}
+  .ring-wave{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(15,157,88,.5);animation:ring-wave 1.8s ease-out infinite;}
+  .ring-wave:nth-child(2){animation-delay:.6s;}
+  .ring-wave:nth-child(3){animation-delay:1.2s;}
+</style>
+
 <div x-show="callReadyAppt" x-cloak
-  style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:70;width:100%;max-width:420px;padding:0 16px;">
-  <div style="background:#16a34a;border:2px solid #4ade80;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);">
-    <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:pulse 2s ease-in-out infinite;">
-      <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.362a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+  style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+
+  <!-- Animated ring icon -->
+  <div style="position:relative;width:130px;height:130px;display:flex;align-items:center;justify-content:center;margin-bottom:28px;">
+    <div class="ring-wave"></div>
+    <div class="ring-wave"></div>
+    <div class="ring-wave"></div>
+    <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;position:relative;z-index:1;animation:ring-pulse 1.8s ease-in-out infinite;">
+      <svg width="38" height="38" fill="white" viewBox="0 0 24 24">
+        <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+      </svg>
     </div>
-    <div style="flex:1;min-width:0;">
-      <p style="color:#fff;font-weight:700;font-size:.9rem;margin:0 0 2px;">Your doctor is ready!</p>
-      <p style="color:#bbf7d0;font-size:.78rem;margin:0;" x-text="callReadyAppt && callReadyAppt.doctor && callReadyAppt.doctor.user && callReadyAppt.doctor.user.first_name ? 'Dr. '+callReadyAppt.doctor.user.first_name+' '+callReadyAppt.doctor.user.last_name+' is waiting for you' : 'Your doctor is waiting'"></p>
+  </div>
+
+  <!-- Text -->
+  <p style="color:#9CA3AF;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Incoming Call</p>
+  <p style="color:#fff;font-size:1.4rem;font-weight:700;margin-bottom:6px;"
+    x-text="callReadyAppt?.doctor?.user?.first_name ? 'Dr. '+callReadyAppt.doctor.user.first_name+' '+callReadyAppt.doctor.user.last_name : 'Your Doctor'">
+  </p>
+  <p style="color:#86EFAC;font-size:.875rem;margin-bottom:44px;"
+    x-text="callReadyAppt?.type ? (callReadyAppt.type === 'chat' ? 'Chat Consultation' : callReadyAppt.type === 'voice' ? 'Voice Call' : 'Video Call') : 'Consultation'">
+  </p>
+
+  <!-- Action buttons -->
+  <div style="display:flex;gap:32px;align-items:center;">
+    <!-- Decline -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <button @click="declineCall()" style="width:68px;height:68px;border-radius:50%;background:#ef4444;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(239,68,68,.4);">
+        <svg width="28" height="28" fill="white" viewBox="0 0 24 24" style="transform:rotate(135deg)">
+          <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+        </svg>
+      </button>
+      <span style="color:#9CA3AF;font-size:.78rem;">Decline</span>
     </div>
-    <a :href="callReadyAppt ? '/consultation/'+callReadyAppt.id+'/call' : '#'"
-      style="padding:8px 14px;background:#fff;color:#15803d;border-radius:10px;font-size:.8rem;font-weight:700;text-decoration:none;flex-shrink:0;white-space:nowrap;">
-      Join Now →
-    </a>
-    <button @click="callReadyAppt=null" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.7);padding:2px;flex-shrink:0;">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
+
+    <!-- Answer -->
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <a :href="callReadyAppt ? '/consultation/'+callReadyAppt.id+'/call' : '#'"
+        style="width:68px;height:68px;border-radius:50%;background:#16a34a;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(22,163,74,.5);text-decoration:none;">
+        <svg width="28" height="28" fill="white" viewBox="0 0 24 24">
+          <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+        </svg>
+      </a>
+      <span style="color:#fff;font-size:.78rem;font-weight:600;">Answer</span>
+    </div>
   </div>
 </div>
 
@@ -429,8 +466,9 @@ function apptApp() {
     showCancelModal: false, cancelAppt: null, cancelLoading: false, cancelError: '', cancelReason: '',
     // Toast
     toast: '',
-    // Doctor ready banner
+    // Incoming call overlay
     callReadyAppt: null,
+    _ringInterval: null,
 
     async init() {
       if (!localStorage.getItem('ms_token')) { window.location.href = '/login'; return; }
@@ -441,6 +479,44 @@ function apptApp() {
         (this.appointments || []).filter(a => a.status === 'in_progress').map(a => a.id)
       );
       this._startPolling();
+    },
+
+    declineCall() {
+      this.stopRing();
+      this.callReadyAppt = null;
+    },
+
+    startRing() {
+      this.stopRing();
+      // Phone ring pattern using Web Audio API — no audio file needed
+      const beep = (ctx, start) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 480;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.001, start);
+        gain.gain.exponentialRampToValueAtTime(0.25, start + 0.05);
+        gain.gain.setValueAtTime(0.25, start + 0.35);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+        osc.start(start);
+        osc.stop(start + 0.4);
+      };
+      const playRing = () => {
+        try {
+          const ctx = new AudioContext();
+          const now = ctx.currentTime;
+          beep(ctx, now);
+          beep(ctx, now + 0.5);
+        } catch(_) {}
+      };
+      playRing();
+      this._ringInterval = setInterval(playRing, 2500);
+    },
+
+    stopRing() {
+      if (this._ringInterval) { clearInterval(this._ringInterval); this._ringInterval = null; }
     },
 
     async fetchAppointments() {
@@ -471,7 +547,15 @@ function apptApp() {
           for (const appt of fresh) {
             if (appt.status === 'in_progress' && !this._knownInProgress.has(appt.id)) {
               this._knownInProgress.add(appt.id);
-              this.callReadyAppt = appt; // triggers banner
+              this.callReadyAppt = appt; // triggers incoming-call overlay
+              this.startRing();          // play ring tone
+              // Auto-dismiss ring after 45 s if patient hasn't acted
+              setTimeout(() => {
+                if (this.callReadyAppt?.id === appt.id) {
+                  this.stopRing();
+                  this.callReadyAppt = null;
+                }
+              }, 45000);
             }
           }
           this.appointments = fresh;
