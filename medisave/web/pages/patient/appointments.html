@@ -608,7 +608,7 @@ function apptApp() {
     async fetchDoctors() {
       this.doctorsLoading = true;
       try {
-        const params = new URLSearchParams({ page: 1, limit: 20, available: true });
+        const params = new URLSearchParams({ page: 1, limit: 50 });
         if (this.specialtyFilter) params.set('specialty', this.specialtyFilter);
         if (this.doctorSearch) params.set('search', this.doctorSearch);
         const r = await this.api('GET', `/api/v1/doctors?${params}`);
