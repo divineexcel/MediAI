@@ -260,7 +260,29 @@ let _ended      = false;   // guard against double-fire of onCallEnded
   } else {
     launchJitsi(roomName);
   }
+  startStatusPolling();
 })();
+
+// ─── Status Polling ──────────────────────────────────────────────────────────
+let _statusPollID = null;
+
+function startStatusPolling() {
+  _statusPollID = setInterval(async () => {
+    try {
+      const r = await api(`/api/v1/appointments/${_apptID}`);
+      if (r.ok) {
+        const { data } = await r.json();
+        if (data?.status === 'completed') {
+          onCallEnded();
+        }
+      }
+    } catch(_) {}
+  }, 3000);
+}
+
+function stopStatusPolling() {
+  clearInterval(_statusPollID);
+}
 
 // ─── Jitsi ────────────────────────────────────────────────────────────────────
 function launchJitsi(roomName) {
@@ -401,6 +423,7 @@ function onCallEnded() {
   if (_ended) return;               // idempotent — safe to call multiple times
   _ended = true;
   stopTimer();
+  stopStatusPolling();
   if (_jitsi) { try { _jitsi.dispose(); } catch(_) {} _jitsi = null; }
   clearInterval(_chatPollID);
 
@@ -414,18 +437,16 @@ function onCallEnded() {
   document.getElementById('ended-duration').textContent = `Duration: ${m}:${s}`;
   document.getElementById('ended-screen').style.display = 'flex';
 
-  // Doctor: mark consultation complete (fire-and-forget)
-  if (_role === 'doctor') {
-    api(`/api/v1/appointments/${_apptID}/complete`, { method: 'PATCH' })
-      .then(r => {
-        if (r.ok) {
-          document.getElementById('ended-complete').style.display = 'block';
-          const rejoin = document.getElementById('btn-rejoin');
-          if (rejoin) rejoin.style.display = 'none';
-        }
-      })
-      .catch(() => {});
-  }
+  // Mark consultation complete (fire-and-forget for both roles)
+  api(`/api/v1/appointments/${_apptID}/complete`, { method: 'PATCH' })
+    .then(r => {
+      if (r.ok) {
+        document.getElementById('ended-complete').style.display = 'block';
+        const rejoin = document.getElementById('btn-rejoin');
+        if (rejoin) rejoin.style.display = 'none';
+      }
+    })
+    .catch(() => {});
 }
 
 function goBack() {

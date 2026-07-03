@@ -295,11 +295,16 @@ func (s *appointmentService) Start(ctx context.Context, userID uint, apptID uint
 		return err
 	}
 
-	doctor, err := s.doctorRepo.FindByUserID(ctx, userID)
-	if err != nil || doctor.ID != appt.DoctorID {
+	// Allow either the doctor or the patient of the appointment to start it
+	if appt.Patient.UserID != userID && appt.Doctor.UserID != userID {
 		return pkgerrors.ErrForbidden
 	}
+
 	if appt.Status != entity.AppointmentStatusPending && appt.Status != entity.AppointmentStatusConfirmed {
+		// Idempotency: if already in progress, return success
+		if appt.Status == entity.AppointmentStatusInProgress {
+			return nil
+		}
 		return pkgerrors.ErrAppointmentNotPending
 	}
 
@@ -316,10 +321,23 @@ func (s *appointmentService) Start(ctx context.Context, userID uint, apptID uint
 		_ = s.consultRepo.Create(ctx, &entity.Consultation{AppointmentID: appt.ID})
 	}
 
+	// Notify the other party
+	var otherUserID uint
+	var title, body string
+	if userID == appt.Doctor.UserID {
+		otherUserID = appt.Patient.UserID
+		title = "Consultation Started"
+		body = fmt.Sprintf("Dr. %s %s has started your consultation.", appt.Doctor.User.FirstName, appt.Doctor.User.LastName)
+	} else {
+		otherUserID = appt.Doctor.UserID
+		title = "Consultation Started"
+		body = fmt.Sprintf("%s %s has started the consultation.", appt.Patient.User.FirstName, appt.Patient.User.LastName)
+	}
+
 	_ = s.notifRepo.Create(ctx, &entity.Notification{
-		UserID:  appt.Patient.UserID,
-		Title:   "Consultation Started",
-		Body:    fmt.Sprintf("Dr. %s %s has started your consultation.", appt.Doctor.User.FirstName, appt.Doctor.User.LastName),
+		UserID:  otherUserID,
+		Title:   title,
+		Body:    body,
 		Type:    entity.NotifTypeAppointment,
 		Channel: entity.ChannelInApp,
 	})
@@ -335,10 +353,16 @@ func (s *appointmentService) Complete(ctx context.Context, userID uint, apptID u
 		return err
 	}
 
-	doctor, err := s.doctorRepo.FindByUserID(ctx, userID)
-	if err != nil || doctor.ID != appt.DoctorID {
+	// Allow either the doctor or the patient of the appointment to complete it
+	if appt.Patient.UserID != userID && appt.Doctor.UserID != userID {
 		return pkgerrors.ErrForbidden
 	}
+
+	// Idempotency: if already completed, return success
+	if appt.Status == entity.AppointmentStatusCompleted {
+		return nil
+	}
+
 	if appt.Status != entity.AppointmentStatusInProgress {
 		return pkgerrors.ErrAppointmentNotInProgress
 	}
@@ -352,12 +376,21 @@ func (s *appointmentService) Complete(ctx context.Context, userID uint, apptID u
 		return pkgerrors.ErrInternalServer
 	}
 
-	_ = s.doctorRepo.IncrementConsultations(ctx, doctor.ID)
+	_ = s.doctorRepo.IncrementConsultations(ctx, appt.DoctorID)
 
+	// Notify both patient and doctor about completion
 	_ = s.notifRepo.Create(ctx, &entity.Notification{
 		UserID:  appt.Patient.UserID,
 		Title:   "Consultation Completed",
-		Body:    fmt.Sprintf("Your consultation with Dr. %s %s is complete. How was your experience?", doctor.User.FirstName, doctor.User.LastName),
+		Body:    fmt.Sprintf("Your consultation with Dr. %s %s is complete. How was your experience?", appt.Doctor.User.FirstName, appt.Doctor.User.LastName),
+		Type:    entity.NotifTypeAppointment,
+		Channel: entity.ChannelInApp,
+	})
+
+	_ = s.notifRepo.Create(ctx, &entity.Notification{
+		UserID:  appt.Doctor.UserID,
+		Title:   "Consultation Completed",
+		Body:    fmt.Sprintf("Your consultation with %s %s is complete.", appt.Patient.User.FirstName, appt.Patient.User.LastName),
 		Type:    entity.NotifTypeAppointment,
 		Channel: entity.ChannelInApp,
 	})

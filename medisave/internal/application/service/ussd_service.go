@@ -368,7 +368,7 @@ func (s *ussdService) handleAIDuration(sess *entity.USSDSession, data *ussdSessi
 	}
 	idx := toInt(input) - 1
 	if idx < 0 || idx >= len(durations) {
-		return invalid(sess, stateAIDuration, con(fmt.Sprintf("Duration?\n1. Today\n2. 2-3 days\n3. 4-7 days\n4. Over a week\n0. Back")))
+		return invalid(sess, stateAIDuration, con("Duration?\n1. Today\n2. 2-3 days\n3. 4-7 days\n4. Over a week\n0. Back"))
 	}
 	data.Duration = durations[idx]
 	sess.MenuState = stateAISeverity
@@ -408,7 +408,7 @@ func (s *ussdService) handleAISeverity(sess *entity.USSDSession, data *ussdSessi
 	return s.renderAIResult(data)
 }
 
-func (s *ussdService) handleAIResult(ctx context.Context, sess *entity.USSDSession, data *ussdSessionData, input string, user *entity.User, patient *entity.Patient) string {
+func (s *ussdService) handleAIResult(ctx context.Context, sess *entity.USSDSession, data *ussdSessionData, input string, _ *entity.User, patient *entity.Patient) string {
 	switch input {
 	case "0":
 		sess.MenuState = stateHome
@@ -436,11 +436,12 @@ func (s *ussdService) renderAIResult(data *ussdSessionData) string {
 	adv := adviceTable[data.Symptom]
 	menu := fmt.Sprintf("MediSave Assessment:\n\nPossible: %s\nAction: %s\nRisk: %s\n\n*Not medical advice*", adv.possible, data.AIAdvice, data.AIRisk)
 
-	if data.AIRisk == "HIGH" {
+	switch data.AIRisk {
+	case "HIGH":
 		menu += "\n\n1. Emergency SOS\n2. Nearby Hospital\n0. Back"
-	} else if data.AIRisk == "MODERATE" {
+	case "MODERATE":
 		menu += "\n\n1. Book Doctor\n2. Nearby Hospital\n0. Back"
-	} else {
+	default:
 		menu += "\n\n0. Main Menu"
 	}
 	return con(menu)
@@ -536,12 +537,12 @@ func (s *ussdService) renderDoctorList(ctx context.Context, sess *entity.USSDSes
 	return con(sb.String())
 }
 
-func (s *ussdService) renderBookConfirm(ctx context.Context, data *ussdSessionData) string {
+func (s *ussdService) renderBookConfirm(_ context.Context, data *ussdSessionData) string {
 	// Fetch wallet balance for display
 	return con(fmt.Sprintf("Confirm Booking:\n\n%s\n%s\nFee: N%.0f\n\n1. Confirm & Pay\n2. Choose Another\n0. Back", data.DoctorName, data.Specialty, data.DoctorFee))
 }
 
-func (s *ussdService) handleBookConfirm(ctx context.Context, sess *entity.USSDSession, data *ussdSessionData, input string, user *entity.User, patient *entity.Patient) string {
+func (s *ussdService) handleBookConfirm(ctx context.Context, sess *entity.USSDSession, data *ussdSessionData, input string, _ *entity.User, _ *entity.Patient) string {
 	switch input {
 	case "0":
 		sess.MenuState = stateBookList
@@ -632,7 +633,7 @@ func (s *ussdService) renderWalletMenu(ctx context.Context, user *entity.User) s
 	return con(fmt.Sprintf("Health Wallet\n\nBalance: N%.2f\n\n1. Transactions\n2. Savings Goals\n3. Fund Wallet\n0. Back", wallet.Balance))
 }
 
-func (s *ussdService) handleWalletMenu(ctx context.Context, sess *entity.USSDSession, data *ussdSessionData, input string, user *entity.User) string {
+func (s *ussdService) handleWalletMenu(ctx context.Context, sess *entity.USSDSession, _ *ussdSessionData, input string, user *entity.User) string {
 	switch input {
 	case "0":
 		sess.MenuState = stateHome
@@ -727,7 +728,7 @@ func showSOSConfirm() string {
 	return con("EMERGENCY SOS\n\nThis will alert your\nemergency contacts &\nnearest doctors.\n\n1. Confirm SOS\n0. Cancel")
 }
 
-func (s *ussdService) handleSOSConfirm(ctx context.Context, sess *entity.USSDSession, data *ussdSessionData, input string, user *entity.User, patient *entity.Patient) string {
+func (s *ussdService) handleSOSConfirm(ctx context.Context, sess *entity.USSDSession, _ *ussdSessionData, input string, user *entity.User, patient *entity.Patient) string {
 	switch input {
 	case "0":
 		sess.MenuState = stateHome
@@ -756,7 +757,7 @@ func (s *ussdService) handleSOSConfirm(ctx context.Context, sess *entity.USSDSes
 
 // ─── NEARBY HOSPITALS ────────────────────────────────────────────────────────
 
-func (s *ussdService) renderNearby(ctx context.Context, patient *entity.Patient) string {
+func (s *ussdService) renderNearby(_ context.Context, patient *entity.Patient) string {
 	lat, lng := 6.5244, 3.3792
 	if patient != nil && patient.State != "" {
 		if coords, ok := stateCoords[patient.State]; ok {

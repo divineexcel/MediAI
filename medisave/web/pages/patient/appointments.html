@@ -342,7 +342,13 @@
                   <button @click="openReview(appt)" class="flex-1 py-2 border border-primary text-primary rounded-xl text-xs font-semibold hover:bg-accent transition">Leave Review ★</button>
                 </template>
                 <template x-if="appt.status==='pending' || appt.status==='confirmed'">
-                  <button @click="openCancel(appt)" class="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition">Cancel</button>
+                  <div class="flex-1 flex gap-2">
+                    <button @click="startConsultation(appt)" :disabled="startLoading===appt.id"
+                      class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition disabled:opacity-50">
+                      <span x-text="startLoading===appt.id ? 'Calling...' : 'Call Doctor'"></span>
+                    </button>
+                    <button @click="openCancel(appt)" class="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition">Cancel</button>
+                  </div>
                 </template>
               </div>
             </div>
@@ -462,7 +468,7 @@ function apptApp() {
   return {
     activeTab: 'mine',
     // Appointments
-    appointments: [], loading: true, currentPage: 1, totalPages: 1, statusFilter: 'all',
+    appointments: [], loading: true, currentPage: 1, totalPages: 1, statusFilter: 'all', startLoading: null,
     // Doctors
     doctors: [], doctorsLoading: false, doctorSearch: '', specialtyFilter: '',
     specialties: ['Cardiology','Dermatology','General Practice','Gynecology','Neurology','Ophthalmology','Orthopedics','Pediatrics','Psychiatry','Surgery','Urology'],
@@ -491,6 +497,17 @@ function apptApp() {
         if (a.status === 'in_progress') this._knownInProgress[a.id] = true;
       }
       this._startPolling();
+    },
+
+    async startConsultation(appt) {
+      this.startLoading = appt.id;
+      try {
+        await this.api('PATCH', `/api/v1/appointments/${appt.id}/start`);
+        appt.status = 'in_progress';
+        this.showToast('Calling doctor — joining now…');
+        setTimeout(() => { window.location.href = `/consultation/${appt.id}/call`; }, 1200);
+      } catch(e) { this.showToast(e.message || 'Failed to place call'); }
+      finally { this.startLoading = null; }
     },
 
     declineCall() {

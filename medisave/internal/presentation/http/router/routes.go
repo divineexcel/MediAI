@@ -120,17 +120,14 @@ func (r *Router) RegisterAll(h *Handlers) {
 		apptGroup.GET("",     h.Appointment.List)
 		apptGroup.GET("/:id", h.Appointment.GetByID)
 
+		apptGroup.PATCH("/:id/start",    h.Appointment.Start)
+		apptGroup.PATCH("/:id/complete", h.Appointment.Complete)
+
 		patientAppt := apptGroup.Group("", middleware.RequirePatient())
 		{
 			patientAppt.POST("",             h.Appointment.Book)
 			patientAppt.PATCH("/:id/cancel", h.Appointment.Cancel)
 			patientAppt.POST("/:id/review",  h.Appointment.LeaveReview)
-		}
-
-		doctorAppt := apptGroup.Group("", middleware.RequireDoctor())
-		{
-			doctorAppt.PATCH("/:id/start",    h.Appointment.Start)
-			doctorAppt.PATCH("/:id/complete", h.Appointment.Complete)
 		}
 
 		// Room token: accessible by both doctor and patient (authenticated)
