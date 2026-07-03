@@ -122,11 +122,11 @@ func (r *Router) RegisterAll(h *Handlers) {
 
 		apptGroup.PATCH("/:id/start",    h.Appointment.Start)
 		apptGroup.PATCH("/:id/complete", h.Appointment.Complete)
+		apptGroup.PATCH("/:id/cancel",   h.Appointment.Cancel)
 
 		patientAppt := apptGroup.Group("", middleware.RequirePatient())
 		{
 			patientAppt.POST("",             h.Appointment.Book)
-			patientAppt.PATCH("/:id/cancel", h.Appointment.Cancel)
 			patientAppt.POST("/:id/review",  h.Appointment.LeaveReview)
 		}
 

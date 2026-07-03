@@ -206,3 +206,94 @@ func TestIntegration_DatabasePersistenceAndTransactions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(2), txCountR)
 }
+
+func TestIntegration_DoctorCancellation(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "medisave-cancel-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "medisave_test.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	db.Exec("PRAGMA foreign_keys=ON")
+	require.NoError(t, migrations.Run(db))
+	defer sqlDB.Close()
+
+	jwtManager := pkgjwt.NewManager("test-access-secret", "test-refresh-secret", 1, 7)
+	userRepo := repo.NewGORMUserRepository(db)
+	patientRepo := repo.NewGORMPatientRepository(db)
+	doctorRepo := repo.NewGORMDoctorRepository(db)
+	walletRepo := repo.NewGORMWalletRepository(db)
+	txRepo := repo.NewGORMTransactionRepository(db)
+	notifRepo := repo.NewGORMNotificationRepository(db)
+	apptRepo := repo.NewGORMAppointmentRepository(db)
+	consultRepo := repo.NewGORMConsultationRepository(db)
+	prescRepo := repo.NewGORMPrescriptionRepository(db)
+	reviewRepo := repo.NewGORMReviewRepository(db)
+	txer := repo.NewGORMTransactor(db)
+
+	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	apptSvc := service.NewAppointmentService(
+		apptRepo, consultRepo, prescRepo, reviewRepo,
+		patientRepo, doctorRepo, walletRepo, txRepo, notifRepo, txer,
+	)
+
+	ctx := context.Background()
+
+	// Register Patient
+	pResp, err := authSvc.RegisterPatient(ctx, &dto.RegisterRequest{
+		FirstName: "John", LastName: "Doe", Email: "john@example.com", Password: "SecurePassword@123", Phone: "+2348011111111", Role: "patient",
+	})
+	require.NoError(t, err)
+
+	// Register Doctor
+	dResp, err := authSvc.RegisterDoctor(ctx, &dto.DoctorRegisterRequest{
+		RegisterRequest: dto.RegisterRequest{
+			FirstName: "Jane", LastName: "Smith", Email: "jane@example.com", Password: "SecurePassword@123", Phone: "+2348022222222", Role: "doctor",
+		},
+		LicenseNumber: "MD111", Specialty: "GP", YearsOfExperience: 3, ConsultationFee: 2000.0, Hospital: "Gen",
+	})
+	require.NoError(t, err)
+
+	// Verify and set doctor available
+	doc, err := doctorRepo.FindByUserID(ctx, dResp.User.ID)
+	require.NoError(t, err)
+	doc.Status = entity.DoctorStatusVerified
+	doc.IsAvailable = true
+	require.NoError(t, doctorRepo.Update(ctx, doc))
+
+	// Credit patient balance
+	pWallet, err := walletRepo.FindByUserID(ctx, pResp.User.ID)
+	require.NoError(t, err)
+	require.NoError(t, walletRepo.UpdateBalance(ctx, pWallet.ID, 5000.0))
+
+	// Book appointment
+	bookResp, err := apptSvc.Book(ctx, pResp.User.ID, &dto.BookAppointmentRequest{
+		DoctorID: doc.ID, Type: "video", ScheduledAt: time.Now().Add(24 * time.Hour).Format(time.RFC3339), ChiefComplaint: "Fever",
+	})
+	require.NoError(t, err)
+
+	// Doctor cancels appointment
+	err = apptSvc.Cancel(ctx, dResp.User.ID, entity.RoleDoctor, bookResp.Appointment.ID, "Doctor urgent surgery")
+	require.NoError(t, err)
+
+	// Verify status is cancelled
+	appt, err := apptRepo.FindByID(ctx, bookResp.Appointment.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.AppointmentStatusCancelled, appt.Status)
+	assert.Equal(t, "Doctor urgent surgery", appt.CancelReason)
+
+	// Verify refund: Patient balance should be back to 5000.0, Doctor balance should be 0.0
+	pWalletAfter, err := walletRepo.FindByUserID(ctx, pResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 5000.0, pWalletAfter.Balance)
+
+	dWalletAfter, err := walletRepo.FindByUserID(ctx, dResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 0.0, dWalletAfter.Balance)
+}
