@@ -262,7 +262,7 @@
   <!-- Tabs -->
   <div class="flex gap-1 bg-gray-100 rounded-2xl p-1 mb-6">
     <button @click="activeTab='mine'" :class="activeTab==='mine' ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500'" class="flex-1 py-2.5 rounded-xl text-sm transition">My Appointments</button>
-    <button @click="activeTab='doctors'" :class="activeTab==='doctors' ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500'" class="flex-1 py-2.5 rounded-xl text-sm transition">Find a Doctor</button>
+    <button @click="activeTab='doctors'; if(doctors.length===0) fetchDoctors()" :class="activeTab==='doctors' ? 'bg-white shadow-sm text-gray-900 font-semibold' : 'text-gray-500'" class="flex-1 py-2.5 rounded-xl text-sm transition">Find a Doctor</button>
   </div>
 
   <!-- MY APPOINTMENTS TAB -->
@@ -500,7 +500,7 @@ function apptApp() {
 
     async init() {
       if (!localStorage.getItem('ms_token')) { window.location.href = '/login'; return; }
-      await this.fetchAppointments();
+      await Promise.all([this.fetchAppointments(), this.fetchDoctors()]);
       // Track which appointments were already in_progress on load so we only
       // alert for NEW transitions, not appointments that were already active.
       this._knownInProgress = {};
