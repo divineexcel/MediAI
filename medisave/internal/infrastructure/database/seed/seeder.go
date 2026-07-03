@@ -15,6 +15,8 @@ import (
 )
 
 // Run inserts development seed data. Safe to call multiple times — skips if data exists.
+// If the database was seeded with an older version of this file, the repair helpers
+// will bring the existing rows into the state the current code expects.
 func Run(db *gorm.DB) error {
 	logger.Info("running database seeder")
 
@@ -26,6 +28,9 @@ func Run(db *gorm.DB) error {
 	}
 	if err := seedPatients(db); err != nil {
 		return fmt.Errorf("seed patients: %w", err)
+	}
+	if err := seedAppointments(db); err != nil {
+		return fmt.Errorf("seed appointments: %w", err)
 	}
 
 	logger.Info("seeder complete")
@@ -69,17 +74,17 @@ func seedAdmin(db *gorm.DB) error {
 // ─── DOCTORS ─────────────────────────────────────────────────────────────────
 
 type doctorSeed struct {
-	firstName   string
-	lastName    string
-	email       string
-	phone       string
-	license     string
-	specialty   string
-	subSpec     string
-	hospital    string
-	fee         float64
-	experience  int
-	bio         string
+	firstName  string
+	lastName   string
+	email      string
+	phone      string
+	license    string
+	specialty  string
+	subSpec    string
+	hospital   string
+	fee        float64
+	experience int
+	bio        string
 }
 
 var doctorSeeds = []doctorSeed{
@@ -237,6 +242,14 @@ func seedPatients(db *gorm.DB) error {
 		var count int64
 		db.Model(&entity.User{}).Where("email = ?", s.email).Count(&count)
 		if count > 0 {
+			// Patient already exists — repair deposit transaction if it was missing
+			// from an earlier version of the seeder that did not create it.
+			if repairErr := repairPatientDeposit(db, s.email); repairErr != nil {
+				logger.Warn("could not repair patient deposit",
+					zap.String("email", s.email),
+					zap.Error(repairErr),
+				)
+			}
 			continue
 		}
 
@@ -275,12 +288,26 @@ func seedPatients(db *gorm.DB) error {
 		wallet := &entity.Wallet{
 			UserID:    user.ID,
 			OwnerType: entity.WalletOwnerPatient,
-			Balance:   10000,
+			Balance:   50000,
 			Currency:  "NGN",
 			IsActive:  true,
 		}
 
 		if err := db.Create(wallet).Error; err != nil {
+			return err
+		}
+
+		depositTx := &entity.Transaction{
+			Reference:     "SEED-DEPOSIT-" + user.UUID[:8],
+			WalletID:      wallet.ID,
+			Type:          entity.TxTypeDeposit,
+			Amount:        50000,
+			BalanceBefore: 0,
+			BalanceAfter:  50000,
+			Status:        entity.TxStatusSuccess,
+			Description:   "Welcome bonus — initial wallet funding",
+		}
+		if err := db.Create(depositTx).Error; err != nil {
 			return err
 		}
 
@@ -297,6 +324,260 @@ func seedPatients(db *gorm.DB) error {
 		}
 
 		logger.Info("patient seeded", zap.String("name", user.FullName()))
+	}
+
+	return nil
+}
+
+// repairPatientDeposit ensures a patient seeded by an older version of this file
+// (which omitted the deposit transaction) gets the deposit and correct wallet balance.
+// It is a no-op when the deposit already exists.
+func repairPatientDeposit(db *gorm.DB, email string) error {
+	var user entity.User
+	if err := db.Where("email = ?", email).First(&user).Error; err != nil {
+		return err
+	}
+
+	var wallet entity.Wallet
+	if err := db.Where("user_id = ?", user.ID).First(&wallet).Error; err != nil {
+		return err
+	}
+
+	var txCount int64
+	db.Model(&entity.Transaction{}).
+		Where("wallet_id = ? AND type = ?", wallet.ID, entity.TxTypeDeposit).
+		Count(&txCount)
+	if txCount > 0 {
+		return nil // deposit already present — nothing to repair
+	}
+
+	// Create the missing deposit and bring the wallet to the expected 50 000 balance.
+	depositTx := &entity.Transaction{
+		Reference:     "SEED-DEPOSIT-" + user.UUID[:8],
+		WalletID:      wallet.ID,
+		Type:          entity.TxTypeDeposit,
+		Amount:        50000,
+		BalanceBefore: wallet.Balance,
+		BalanceAfter:  50000,
+		Status:        entity.TxStatusSuccess,
+		Description:   "Welcome bonus — initial wallet funding (repair)",
+	}
+	if err := db.Create(depositTx).Error; err != nil {
+		return err
+	}
+
+	if err := db.Model(&entity.Wallet{}).
+		Where("id = ?", wallet.ID).
+		Update("balance", 50000).Error; err != nil {
+		return err
+	}
+
+	logger.Info("repaired patient wallet deposit",
+		zap.String("email", email),
+		zap.Float64("old_balance", wallet.Balance),
+		zap.Float64("new_balance", 50000),
+	)
+	return nil
+}
+
+// ─── APPOINTMENTS ─────────────────────────────────────────────────────────────
+
+type apptDef struct {
+	patientEmail string
+	doctorEmail  string
+	apptType     entity.AppointmentType
+	status       entity.AppointmentStatus
+	offsetDays   int // negative = past, positive = future
+	complaint    string
+	notes        string
+}
+
+var appointmentSeeds = []apptDef{
+	{
+		patientEmail: "emeka@test.medisave.ng",
+		doctorEmail:  "dr.obi@medisave.ng",
+		apptType:     entity.AppointmentTypeVideo,
+		status:       entity.AppointmentStatusCompleted,
+		offsetDays:   -14,
+		complaint:    "Persistent headache and fatigue for 2 weeks",
+		notes:        "Tension headaches likely stress-related. Recommended rest, hydration, and ibuprofen as needed. Review in 4 weeks.",
+	},
+	{
+		patientEmail: "emeka@test.medisave.ng",
+		doctorEmail:  "dr.bello@medisave.ng",
+		apptType:     entity.AppointmentTypeVideo,
+		status:       entity.AppointmentStatusCompleted,
+		offsetDays:   -7,
+		complaint:    "Intermittent chest tightness",
+		notes:        "ECG and BP within normal range. Likely anxiety-induced. Follow up in 4 weeks if symptoms persist.",
+	},
+	{
+		patientEmail: "blessing@test.medisave.ng",
+		doctorEmail:  "dr.obi@medisave.ng",
+		apptType:     entity.AppointmentTypeChat,
+		status:       entity.AppointmentStatusCompleted,
+		offsetDays:   -10,
+		complaint:    "High fever and body aches for 3 days",
+		notes:        "Malaria RDT positive. Prescribed artemether-lumefantrine 6-dose pack. Advised rest, fluids, and repeat RDT after 48h.",
+	},
+	{
+		patientEmail: "blessing@test.medisave.ng",
+		doctorEmail:  "dr.eze@medisave.ng",
+		apptType:     entity.AppointmentTypeChat,
+		status:       entity.AppointmentStatusConfirmed,
+		offsetDays:   2,
+		complaint:    "Routine child wellness and vaccination check",
+		notes:        "",
+	},
+	{
+		patientEmail: "ibrahim@test.medisave.ng",
+		doctorEmail:  "dr.aliyu@medisave.ng",
+		apptType:     entity.AppointmentTypeVideo,
+		status:       entity.AppointmentStatusCompleted,
+		offsetDays:   -5,
+		complaint:    "Itchy skin rash spreading on arms and torso",
+		notes:        "Allergic contact dermatitis. Prescribed topical hydrocortisone 1% cream and cetirizine 10mg daily for 7 days.",
+	},
+	{
+		patientEmail: "ibrahim@test.medisave.ng",
+		doctorEmail:  "dr.obi@medisave.ng",
+		apptType:     entity.AppointmentTypeChat,
+		status:       entity.AppointmentStatusPending,
+		offsetDays:   3,
+		complaint:    "Annual health screening",
+		notes:        "",
+	},
+}
+
+func seedAppointments(db *gorm.DB) error {
+	var count int64
+	db.Model(&entity.Appointment{}).Count(&count)
+	if count > 0 {
+		return nil
+	}
+
+	type patRec struct {
+		patientID uint
+		walletID  uint
+	}
+	patMap := make(map[string]patRec)
+	for _, ps := range patientSeeds {
+		var u entity.User
+		if err := db.Where("email = ?", ps.email).First(&u).Error; err != nil {
+			continue
+		}
+		var p entity.Patient
+		if err := db.Where("user_id = ?", u.ID).First(&p).Error; err != nil {
+			continue
+		}
+		var w entity.Wallet
+		if err := db.Where("user_id = ?", u.ID).First(&w).Error; err != nil {
+			continue
+		}
+		patMap[ps.email] = patRec{patientID: p.ID, walletID: w.ID}
+	}
+
+	type docRec struct {
+		doctorID uint
+		fee      float64
+	}
+	docMap := make(map[string]docRec)
+	for _, ds := range doctorSeeds {
+		var u entity.User
+		if err := db.Where("email = ?", ds.email).First(&u).Error; err != nil {
+			continue
+		}
+		var d entity.Doctor
+		if err := db.Where("user_id = ?", u.ID).First(&d).Error; err != nil {
+			continue
+		}
+		docMap[ds.email] = docRec{doctorID: d.ID, fee: d.ConsultationFee}
+	}
+
+	now := time.Now()
+
+	for i, a := range appointmentSeeds {
+		pat, ok := patMap[a.patientEmail]
+		if !ok {
+			continue
+		}
+		doc, ok := docMap[a.doctorEmail]
+		if !ok {
+			continue
+		}
+
+		scheduledAt := now.AddDate(0, 0, a.offsetDays)
+
+		appt := &entity.Appointment{
+			PatientID:       pat.patientID,
+			DoctorID:        doc.doctorID,
+			Type:            a.apptType,
+			Status:          a.status,
+			ScheduledAt:     scheduledAt,
+			ConsultationFee: doc.fee,
+			ChiefComplaint:  a.complaint,
+			Notes:           a.notes,
+		}
+
+		if a.status == entity.AppointmentStatusCompleted {
+			startedAt := scheduledAt
+			completedAt := scheduledAt.Add(30 * time.Minute)
+			appt.StartedAt = &startedAt
+			appt.CompletedAt = &completedAt
+		}
+
+		if err := db.Create(appt).Error; err != nil {
+			return err
+		}
+
+		if a.status == entity.AppointmentStatusCompleted {
+			// Re-fetch the wallet to get the current live balance — a prior loop
+			// iteration may have debited it.
+			var w entity.Wallet
+			if err := db.First(&w, pat.walletID).Error; err != nil {
+				return err
+			}
+
+			if w.Balance < doc.fee {
+				// Wallet has insufficient funds for this seed payment.
+				// Log a warning and skip the debit rather than failing the entire
+				// seeder and leaving appointments in a partially-seeded state.
+				logger.Warn("skipping seed appointment payment: insufficient wallet balance",
+					zap.String("patient", a.patientEmail),
+					zap.String("doctor", a.doctorEmail),
+					zap.Float64("balance", w.Balance),
+					zap.Float64("fee", doc.fee),
+				)
+				continue
+			}
+
+			newBalance := w.Balance - doc.fee
+			ref := fmt.Sprintf("SEED-APPT-%04d-%02d", appt.ID, i)
+			payTx := &entity.Transaction{
+				Reference:       ref,
+				WalletID:        pat.walletID,
+				Type:            entity.TxTypePayment,
+				Amount:          doc.fee,
+				BalanceBefore:   w.Balance,
+				BalanceAfter:    newBalance,
+				Status:          entity.TxStatusSuccess,
+				Description:     fmt.Sprintf("Consultation payment — %s", a.doctorEmail),
+				RelatedEntityID: appt.ID,
+			}
+			if err := db.Create(payTx).Error; err != nil {
+				return err
+			}
+			if err := db.Model(&entity.Wallet{}).Where("id = ?", pat.walletID).
+				Update("balance", newBalance).Error; err != nil {
+				return err
+			}
+		}
+
+		logger.Info("appointment seeded",
+			zap.String("patient", a.patientEmail),
+			zap.String("doctor", a.doctorEmail),
+			zap.String("status", string(a.status)),
+		)
 	}
 
 	return nil

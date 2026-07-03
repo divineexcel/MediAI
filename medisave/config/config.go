@@ -32,6 +32,7 @@ type DatabaseConfig struct {
 	Driver string
 	Path   string
 	URL    string
+	Env    string // mirrors APP_ENV — used to control GORM log verbosity
 }
 
 type JWTConfig struct {
@@ -100,6 +101,7 @@ func Load() *Config {
 			Driver: getEnv("DB_DRIVER", "sqlite"),
 			Path:   getEnv("DB_PATH", "./data/medisave.db"),
 			URL:    getEnv("DB_URL", ""),
+			Env:    getEnv("APP_ENV", "development"),
 		},
 		JWT: JWTConfig{
 			AccessSecret:      getEnv("JWT_ACCESS_SECRET", ""),

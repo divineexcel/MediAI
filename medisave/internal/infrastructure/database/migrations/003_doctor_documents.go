@@ -10,10 +10,10 @@ func migration003DoctorDocuments() Migration {
 			if db.Dialector.Name() == "postgres" {
 				return nil
 			}
-			return db.Exec(`
-				ALTER TABLE doctors ADD COLUMN work_id_url TEXT NOT NULL DEFAULT '';
-				ALTER TABLE doctors ADD COLUMN medical_license_url TEXT NOT NULL DEFAULT '';
-			`).Error
+			if err := db.Exec(`ALTER TABLE doctors ADD COLUMN work_id_url TEXT NOT NULL DEFAULT ''`).Error; err != nil {
+				return err
+			}
+			return db.Exec(`ALTER TABLE doctors ADD COLUMN medical_license_url TEXT NOT NULL DEFAULT ''`).Error
 		},
 		Down: func(db *gorm.DB) error {
 			return nil // SQLite does not support DROP COLUMN easily

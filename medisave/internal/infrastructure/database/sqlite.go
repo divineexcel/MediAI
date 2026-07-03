@@ -1,12 +1,11 @@
 package database
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"go.uber.org/zap"
-	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
@@ -17,48 +16,65 @@ import (
 )
 
 func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
-	var dialector gorm.Dialector
-
-	switch cfg.Driver {
-	case "postgres":
-		if cfg.URL == "" {
-			return nil, errors.New("database URL is required for postgres driver")
-		}
-		dialector = postgres.Open(cfg.URL)
-	case "sqlite", "":
-		absPath, err := filepath.Abs(cfg.Path)
-		if err != nil {
-			return nil, err
-		}
-		cfg.Path = absPath
-		if err := os.MkdirAll(filepath.Dir(cfg.Path), 0755); err != nil {
-			return nil, err
-		}
-		dialector = sqlite.Open(cfg.Path)
-	default:
-		return nil, errors.New("unsupported database driver: " + cfg.Driver)
+	if cfg.Driver != "sqlite" && cfg.Driver != "" {
+		return nil, fmt.Errorf("unsupported database driver %q — only sqlite is supported", cfg.Driver)
 	}
 
-	db, err := gorm.Open(dialector, &gorm.Config{
-		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	absPath, err := filepath.Abs(cfg.Path)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Path = absPath
+
+	if err := os.MkdirAll(filepath.Dir(cfg.Path), 0755); err != nil {
+		return nil, err
+	}
+
+	// Show SQL errors in development; suppress verbose query logs in production.
+	logLevel := gormlogger.Error
+	if cfg.Env == "development" {
+		logLevel = gormlogger.Warn // errors + slow queries
+	}
+
+	db, err := gorm.Open(sqlite.Open(cfg.Path), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(logLevel),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	if cfg.Driver == "postgres" {
-		logger.Info("database connected", zap.String("driver", "postgres"))
-	} else {
-		// WAL mode: readers don't block writers — critical for concurrent API requests
-		db.Exec("PRAGMA journal_mode=WAL")
-		// Enforce foreign key constraints at DB level, not just application level
-		db.Exec("PRAGMA foreign_keys=ON")
-		// Improve write performance: sync only when SQLite deems necessary
-		db.Exec("PRAGMA synchronous=NORMAL")
-		// 64MB page cache
-		db.Exec("PRAGMA cache_size=-65536")
-		logger.Info("database connected", zap.String("driver", "sqlite"), zap.String("path", cfg.Path))
+	// Each PRAGMA is critical for correctness and performance.
+	// Log a warning on failure rather than silently continuing.
+	type pragma struct {
+		sql  string
+		desc string
 	}
+	pragmas := []pragma{
+		// WAL mode: readers don't block writers — essential for concurrent API requests
+		{"PRAGMA journal_mode=WAL", "set WAL journal mode"},
+		// Enforce FK constraints at DB level, not just application level
+		{"PRAGMA foreign_keys=ON", "enable foreign key enforcement"},
+		// Improve write throughput: sync only when SQLite deems necessary
+		{"PRAGMA synchronous=NORMAL", "set synchronous=NORMAL"},
+		// 64 MB page cache
+		{"PRAGMA cache_size=-65536", "set cache_size to 64 MB"},
+		// Flush any outstanding WAL frames into the main DB file on startup
+		{"PRAGMA wal_checkpoint(TRUNCATE)", "WAL checkpoint on startup"},
+	}
+
+	for _, p := range pragmas {
+		if result := db.Exec(p.sql); result.Error != nil {
+			logger.Warn("database pragma failed — check DB file permissions",
+				zap.String("pragma", p.desc),
+				zap.Error(result.Error),
+			)
+		}
+	}
+
+	logger.Info("database connected",
+		zap.String("driver", "sqlite"),
+		zap.String("path", cfg.Path),
+	)
 
 	return db, nil
 }
