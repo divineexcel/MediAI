@@ -284,7 +284,7 @@ func (s *appointmentService) Cancel(ctx context.Context, userID uint, role entit
 	// Refund patient: debit doctor wallet, credit patient wallet
 	patientWallet, pErr := s.walletRepo.FindByUserID(ctx, appt.Patient.UserID)
 	docWallet, dErr := s.walletRepo.FindByUserID(ctx, appt.Doctor.UserID)
-	if pErr == nil && dErr == nil {
+	if appt.TransactionID != 0 && pErr == nil && dErr == nil {
 		fee := appt.ConsultationFee
 		err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
 			logger.Info("executing cancel refund transaction", zap.Uint("doc_wallet_id", docWallet.ID), zap.Uint("patient_wallet_id", patientWallet.ID), zap.Float64("fee", fee))
