@@ -26,6 +26,11 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		}
 		dialector = postgres.Open(cfg.URL)
 	case "sqlite", "":
+		absPath, err := filepath.Abs(cfg.Path)
+		if err != nil {
+			return nil, err
+		}
+		cfg.Path = absPath
 		if err := os.MkdirAll(filepath.Dir(cfg.Path), 0755); err != nil {
 			return nil, err
 		}

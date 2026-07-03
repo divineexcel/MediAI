@@ -24,7 +24,7 @@ func NewClient(apiKey string) *Client {
 }
 
 // FindNearby returns health facilities near the given coordinates.
-// Falls back to curated Nigerian hospital data if no API key is configured.
+// Falls back to curated Abuja FCT data if no API key is configured.
 func (c *Client) FindNearby(lat, lng float64, placeType string, radiusMeters int) ([]*dto.NearbyPlaceResponse, error) {
 	if c.apiKey == "" {
 		return localFallback(lat, lng, placeType, radiusMeters), nil
@@ -133,28 +133,44 @@ type facility struct {
 	hours   string
 }
 
-var nigerianFacilities = []facility{
-	// Lagos
-	{"Lagos University Teaching Hospital (LUTH)", "Idi-Araba, Surulere, Lagos", "08023032003", 6.5108, 3.3598, "hospital", "24 hours"},
-	{"Lagos Island General Hospital", "1 Lagos Island, Lagos", "01-2700800", 6.4522, 3.4007, "hospital", "24 hours"},
-	{"Reddington Hospital", "12 Idowu Martins, Victoria Island, Lagos", "01-2716800", 6.4281, 3.4219, "hospital", "24 hours"},
-	{"St. Nicholas Hospital", "57 Campbell St, Lagos Island", "01-2700911", 6.4541, 3.3913, "hospital", "24 hours"},
-	{"Eko Hospital", "31 Mobolaji Bank Anthony Way, Maryland, Lagos", "01-7900400", 6.5622, 3.3571, "hospital", "24 hours"},
-	{"Mediplan Healthcare", "45A Awolowo Road, Ikoyi, Lagos", "01-4617272", 6.4476, 3.4343, "clinic", "Mon-Sat 8am-8pm"},
-	{"MedPlus Pharmacy Victoria Island", "Adeola Odeku, Victoria Island, Lagos", "08180000000", 6.4298, 3.4206, "pharmacy", "8am-10pm"},
-	{"Alpha Medical Laboratory", "21 Adeniran Ogunsanya, Surulere, Lagos", "08035000000", 6.5041, 3.3573, "laboratory", "7am-7pm"},
-	// Abuja
+var abujaFacilities = []facility{
+	// Hospitals
 	{"National Hospital Abuja", "Plot 132 Central Business District, Abuja", "09-5238101", 9.0579, 7.4951, "hospital", "24 hours"},
 	{"Garki Hospital", "Garki Area 3, Abuja", "09-2340005", 9.0393, 7.4738, "hospital", "24 hours"},
 	{"Nisa Premier Hospital", "Jabi, Abuja", "09-2917600", 9.0624, 7.4490, "hospital", "24 hours"},
 	{"Asokoro District Hospital", "Asokoro, Abuja", "09-3140000", 9.0523, 7.5284, "hospital", "24 hours"},
 	{"Wuse General Hospital", "Wuse Zone 6, Abuja", "09-5230032", 9.0676, 7.4850, "hospital", "24 hours"},
-	// Kano
-	{"Aminu Kano Teaching Hospital", "Zoo Road, Kano", "064-666601", 12.0022, 8.5159, "hospital", "24 hours"},
-	{"Murtala Muhammad Specialist Hospital", "Kano State, Kano", "064-637300", 12.0007, 8.5182, "hospital", "24 hours"},
-	// Port Harcourt
-	{"University of Port Harcourt Teaching Hospital", "East-West Road, Choba, Rivers State", "084-234730", 4.8396, 6.9111, "hospital", "24 hours"},
-	{"Braithwaite Memorial Specialist Hospital", "Moscow Road, Port Harcourt", "084-232611", 4.7774, 6.9978, "hospital", "24 hours"},
+	{"Maitama District Hospital", "Maitama, Abuja", "09-5230081", 9.0833, 7.4961, "hospital", "24 hours"},
+	{"Kubwa General Hospital", "Kubwa, Abuja", "09-2340007", 9.1206, 7.3242, "hospital", "24 hours"},
+	{"Gwagwalada General Hospital", "Gwagwalada, Abuja", "09-8820001", 8.9419, 7.0834, "hospital", "24 hours"},
+	{"Nyanya General Hospital", "Nyanya, Abuja", "09-2340005", 8.9833, 7.5500, "hospital", "24 hours"},
+	{"Bwari General Hospital", "Bwari, Abuja", "09-5230050", 9.2667, 7.3667, "hospital", "24 hours"},
+	{"University of Abuja Teaching Hospital", "Gwagwalada, Abuja", "09-8820002", 8.9446, 7.0807, "hospital", "24 hours"},
+	// Clinics
+	{"Prime Health Clinic", "Wuse Zone 4, Abuja", "09-5230091", 9.0670, 7.4800, "clinic", "Mon-Fri 8am-6pm"},
+	{"Hilux Healthcare Clinic", "Maitama, Abuja", "09-5230092", 9.0800, 7.4920, "clinic", "Mon-Sat 8am-7pm"},
+	{"Cedarcrest Clinics", "Jabi Dam Road, Jabi, Abuja", "09-2917605", 9.0600, 7.4450, "clinic", "Mon-Fri 8am-6pm"},
+	{"El-Shalom Clinic", "Area 10, Garki, Abuja", "09-2340006", 9.0380, 7.4700, "clinic", "Mon-Sat 8am-6pm"},
+	{"Alpha Spring Medical Centre", "Utako, Abuja", "09-5230093", 9.0530, 7.4580, "clinic", "Mon-Sat 8am-8pm"},
+	{"Keffi Medical Centre", "Abuja-Keffi Road, Mararaba", "09-5230094", 8.9491, 7.4708, "clinic", "24 hours"},
+	{"Jordan Medical Centre", "Area 2, Garki, Abuja", "09-2340008", 9.0350, 7.4900, "clinic", "Mon-Sat 8am-6pm"},
+	// Pharmacies
+	{"HealthPlus Pharmacy Wuse", "Wuse Zone 5, Abuja", "09-5230095", 9.0700, 7.4830, "pharmacy", "8am-9pm"},
+	{"Medplus Pharmacy Abuja", "Jabi, Abuja", "09-2917608", 9.0610, 7.4520, "pharmacy", "8am-10pm"},
+	{"Danat Pharmacy", "Area 3, Garki, Abuja", "09-2340009", 9.0400, 7.4750, "pharmacy", "8am-9pm"},
+	{"Benyl Pharmacy", "Wuse Zone 1, Abuja", "09-5230096", 9.0650, 7.4900, "pharmacy", "8am-9pm"},
+	{"Pharmajet Pharmacy", "Maitama, Abuja", "09-5230097", 9.0820, 7.4950, "pharmacy", "8am-9pm"},
+	{"Zion Pharmacy", "Kubwa, Abuja", "09-2340010", 9.1180, 7.3260, "pharmacy", "8am-8pm"},
+	// Laboratories
+	{"Clina Lancet Laboratories", "Wuse Zone 5, Abuja", "09-5230098", 9.0710, 7.4840, "laboratory", "7am-7pm"},
+	{"Synlab Nigeria", "Maitama, Abuja", "09-5230099", 9.0810, 7.4930, "laboratory", "7am-6pm"},
+	{"Everight Diagnostics", "Garki Area 11, Abuja", "09-2340011", 9.0370, 7.4780, "laboratory", "7am-7pm"},
+	{"Medcourt Laboratory", "Wuse Zone 4, Abuja", "09-5230100", 9.0680, 7.4820, "laboratory", "7am-6pm"},
+	{"Global Diagnostics", "Utako, Abuja", "09-5230101", 9.0520, 7.4550, "laboratory", "7am-6pm"},
+	// Blood Banks
+	{"National Blood Transfusion Service (Abuja)", "Central Area, Abuja", "09-5238102", 9.0550, 7.4980, "blood_bank", "8am-7pm"},
+	{"National Hospital Blood Bank", "Plot 132 CBD, Abuja", "09-5238103", 9.0585, 7.4955, "blood_bank", "24 hours"},
+	{"Asokoro District Hospital Blood Bank", "Asokoro, Abuja", "09-3140001", 9.0528, 7.5288, "blood_bank", "24 hours"},
 }
 
 func localFallback(lat, lng float64, placeType string, _ int) []*dto.NearbyPlaceResponse {
@@ -163,7 +179,7 @@ func localFallback(lat, lng float64, placeType string, _ int) []*dto.NearbyPlace
 		dist float64
 	}
 	var all []distFac
-	for _, f := range nigerianFacilities {
+	for _, f := range abujaFacilities {
 		if placeType != "" && f.t != placeType {
 			continue
 		}

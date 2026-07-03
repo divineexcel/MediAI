@@ -7,10 +7,23 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>body{font-family:'Inter',sans-serif;} .fi{@apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition;}</style>
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    .fi {
+      width: 100%; padding: 12px 16px; border: 1px solid #E5E7EB; border-radius: 12px;
+      font-size: 14px; outline: none; transition: all 0.2s; min-height: 48px;
+    }
+    .fi:focus { border-color: #0F9D58; box-shadow: 0 0 0 3px rgba(15, 157, 88, 0.15); }
+    .bnav-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex: 1; padding: 6px 0; color: #9CA3AF; font-size: 10px;
+      font-weight: 500; background: none; border: none; cursor: pointer;
+      transition: color .15s; text-decoration: none; -webkit-tap-highlight-color: transparent;
+    }
+    .bnav-btn.active { color: #0F9D58; }
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="doctorProfileApp()" x-init="init()">
+<body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="doctorProfileApp()" x-init="init()" id="profile-body">
 
 <div class="max-w-2xl mx-auto px-4 py-8 pb-24 lg:pb-8">
   <div class="flex items-center gap-4 mb-6">
@@ -132,7 +145,7 @@
 
     <!-- Save -->
     <button type="submit" :disabled="saving"
-      class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3.5 rounded-xl transition-all shadow-lg shadow-primary/25 disabled:opacity-60 flex items-center justify-center gap-2">
+      class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3.5 rounded-xl active:scale-[0.98] transition-all shadow-lg shadow-primary/25 disabled:opacity-60 flex items-center justify-center gap-2 min-h-[48px]">
       <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -151,19 +164,46 @@
       <input x-model="pw.current" type="password" placeholder="Current password" class="fi"/>
       <input x-model="pw.new" type="password" placeholder="New password (min. 8 chars)" class="fi"/>
       <button @click="changePassword()"
-        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-all text-sm min-h-[48px]">
         Update Password
       </button>
     </div>
   </div>
 
   <div class="mt-6">
-    <button @click="logout()" class="w-full flex items-center justify-center gap-2 py-3 border border-red-200 rounded-xl text-red-600 hover:bg-red-50 transition text-sm font-medium">
+    <button @click="logout()" class="w-full flex items-center justify-center gap-2 py-3 border border-red-200 rounded-xl text-red-600 hover:bg-red-50 active:scale-[0.98] transition-all text-sm font-medium min-h-[48px]">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
       Sign out
     </button>
   </div>
 </div>
+
+<!-- Mobile bottom nav -->
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
+  style="padding-bottom:env(safe-area-inset-bottom)">
+  <div class="flex justify-around items-center h-16">
+    <a href="/doctor/dashboard" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Home</span>
+    </a>
+    <a href="/doctor/appointments" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Schedule</span>
+    </a>
+    <a href="/doctor/patients" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Patients</span>
+    </a>
+    <a href="/doctor/earnings" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Earnings</span>
+    </a>
+    <a href="/doctor/profile" class="bnav-btn active">
+      <svg class="w-[22px] h-[22px] text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span class="text-[10px] font-bold mt-0.5 text-primary">Profile</span>
+    </a>
+  </div>
+</nav>
 
 <script>
 function doctorProfileApp() {
@@ -199,6 +239,7 @@ function doctorProfileApp() {
             education: d.education || '',
             certifications: d.certifications || ''
           };
+          document.getElementById('profile-body').classList.remove('opacity-0');
         }
       } catch(e) { console.error(e); }
     },

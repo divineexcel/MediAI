@@ -17,7 +17,7 @@
     .tx-icon-payment{@apply w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center shrink-0;}
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="walletApp()" x-init="init()">
+<body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="walletApp()" x-init="init()" id="wallet-body">
 
 <div class="max-w-2xl mx-auto px-4 py-6 pb-28">
 
@@ -51,7 +51,7 @@
   <!-- Quick Actions -->
   <div class="grid grid-cols-2 gap-3 mb-6">
     <button @click="showDepositModal = true"
-      class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-md transition group">
+      class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:border-primary/30 hover:shadow-md active:scale-[0.98] transition-all group">
       <div class="w-10 h-10 bg-accent rounded-xl flex items-center justify-center group-hover:bg-primary transition-colors">
         <svg class="w-5 h-5 text-primary group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
       </div>
@@ -61,7 +61,7 @@
       </div>
     </button>
     <button @click="showWithdrawModal = true"
-      class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md transition group">
+      class="flex items-center gap-3 p-4 bg-white rounded-2xl border border-gray-100 hover:border-red-200 hover:shadow-md active:scale-[0.98] transition-all group">
       <div class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center group-hover:bg-red-500 transition-colors">
         <svg class="w-5 h-5 text-red-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4m8 8l-8-8 8-8"/></svg>
       </div>
@@ -193,11 +193,11 @@
 </div>
 
 <!-- ─── DEPOSIT MODAL ───────────────────────────────────────────────────────── -->
-<div x-show="showDepositModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
-  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" @click.stop>
+<div x-show="showDepositModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-xs">
+  <div class="bg-white rounded-t-[32px] sm:rounded-2xl w-full max-w-md p-6 shadow-2xl pb-10 sm:pb-6" @click.stop>
     <div class="flex items-center justify-between mb-5">
       <h3 class="font-bold text-gray-900">Add Money to Wallet</h3>
-      <button @click="showDepositModal = false" class="text-gray-400 hover:text-gray-600">
+      <button @click="showDepositModal = false" class="text-gray-400 hover:text-gray-600 p-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -206,7 +206,7 @@
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Amount (₦)</label>
         <input x-model.number="depositForm.amount" type="number" min="100" placeholder="e.g. 5000"
-          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"/>
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary min-h-[48px]"/>
         <p class="text-xs text-gray-400 mt-1">Minimum deposit: ₦100</p>
       </div>
       <!-- Quick amounts -->
@@ -214,13 +214,13 @@
         <template x-for="amt in [1000, 2000, 5000, 10000]" :key="amt">
           <button @click="depositForm.amount = amt"
             :class="depositForm.amount === amt ? 'bg-primary text-white' : 'bg-gray-50 text-gray-700'"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-100 hover:border-primary/30 transition"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-100 hover:border-primary/30 active:scale-[0.98] transition-all min-h-[36px]"
             x-text="'₦' + amt.toLocaleString()"></button>
         </template>
       </div>
       <div x-show="depositError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="depositError"></div>
       <button @click="initDeposit()" :disabled="depositLoading || !depositForm.amount"
-        class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2">
+        class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[48px]">
         <svg x-show="depositLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span x-text="depositLoading ? 'Initializing...' : 'Continue to Payment'"></span>
       </button>
@@ -237,16 +237,16 @@
         <p class="text-xs text-gray-400 mt-1">After payment, click "I've paid" to confirm.</p>
       </div>
       <a :href="depositPayLink" target="_blank"
-        class="block w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl transition text-center">
+        class="block w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-all text-center min-h-[48px] flex items-center justify-center">
         Pay ₦<span x-text="fmt(depositForm.amount)"></span> via Paystack
       </a>
       <div class="flex gap-2">
         <button @click="verifyPayment()"
-          class="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+          class="flex-1 bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-all text-sm min-h-[48px]">
           I've paid ✓
         </button>
         <button @click="depositStep2=false; depositPayLink=''"
-          class="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm hover:bg-gray-50 transition">
+          class="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm hover:bg-gray-50 active:scale-[0.98] transition-all min-h-[48px]">
           Cancel
         </button>
       </div>
@@ -256,11 +256,11 @@
 </div>
 
 <!-- ─── WITHDRAW MODAL ─────────────────────────────────────────────────────── -->
-<div x-show="showWithdrawModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
-  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" @click.stop>
+<div x-show="showWithdrawModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-xs">
+  <div class="bg-white rounded-t-[32px] sm:rounded-2xl w-full max-w-md p-6 shadow-2xl pb-10 sm:pb-6" @click.stop>
     <div class="flex items-center justify-between mb-5">
       <h3 class="font-bold text-gray-900">Withdraw Funds</h3>
-      <button @click="showWithdrawModal = false" class="text-gray-400 hover:text-gray-600">
+      <button @click="showWithdrawModal = false" class="text-gray-400 hover:text-gray-600 p-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -268,28 +268,28 @@
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Amount (₦)</label>
         <input x-model.number="withdrawForm.amount" type="number" min="100" placeholder="e.g. 2000"
-          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">Bank code</label>
           <input x-model="withdrawForm.bank_code" type="text" placeholder="058 (GTBank)"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">Account number</label>
           <input x-model="withdrawForm.account_no" type="text" maxlength="10" placeholder="0123456789"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
         </div>
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Account name</label>
         <input x-model="withdrawForm.account_name" type="text" placeholder="Full name on account"
-          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
       </div>
       <div x-show="withdrawError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="withdrawError"></div>
       <button @click="withdraw()" :disabled="withdrawLoading"
-        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2">
+        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3.5 rounded-xl active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[48px]">
         <svg x-show="withdrawLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span x-text="withdrawLoading ? 'Processing...' : 'Withdraw ₦' + fmt(withdrawForm.amount || 0)"></span>
       </button>
@@ -298,11 +298,11 @@
 </div>
 
 <!-- ─── NEW SAVINGS GOAL MODAL ────────────────────────────────────────────── -->
-<div x-show="showGoalModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
-  <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" @click.stop>
+<div x-show="showGoalModal" x-transition class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-xs">
+  <div class="bg-white rounded-t-[32px] sm:rounded-2xl w-full max-w-md p-6 shadow-2xl pb-10 sm:pb-6" @click.stop>
     <div class="flex items-center justify-between mb-5">
       <h3 class="font-bold text-gray-900">New Savings Goal</h3>
-      <button @click="showGoalModal = false" class="text-gray-400 hover:text-gray-600">
+      <button @click="showGoalModal = false" class="text-gray-400 hover:text-gray-600 p-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
@@ -310,23 +310,23 @@
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Goal title</label>
         <input x-model="goalForm.title" type="text" placeholder="e.g. Surgery Fund, Antenatal Care"
-          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+          class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">Target amount (₦)</label>
           <input x-model.number="goalForm.target_amount" type="number" min="500" placeholder="50000"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">Target date</label>
           <input x-model="goalForm.target_date" type="date"
-            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"/>
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[48px]"/>
         </div>
       </div>
       <div>
         <label class="block text-xs font-medium text-gray-500 mb-1">Savings frequency</label>
-        <select x-model="goalForm.frequency" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white">
+        <select x-model="goalForm.frequency" class="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white min-h-[48px]">
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly" selected>Monthly</option>
@@ -334,7 +334,7 @@
       </div>
       <div x-show="goalError" class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs" x-text="goalError"></div>
       <button @click="createGoal()" :disabled="goalLoading"
-        class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl transition disabled:opacity-60 flex items-center justify-center gap-2">
+        class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2 min-h-[48px]">
         <svg x-show="goalLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span x-text="goalLoading ? 'Creating...' : 'Create Savings Goal'"></span>
       </button>
@@ -343,13 +343,29 @@
 </div>
 
 <!-- Mobile bottom nav -->
-<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4">
-  <div class="flex items-center justify-around py-2">
-    <a href="/patient/dashboard" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span class="text-xs">Home</span></a>
-    <a href="/patient/appointments" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg><span class="text-xs">Appointments</span></a>
-    <a href="/patient/ai" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg><span class="text-xs">AI</span></a>
-    <a href="/patient/wallet" class="flex flex-col items-center gap-1 py-2 px-3 text-primary"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M21 7H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V9a2 2 0 00-2-2zm-1 11H4V9h16v9zm-5-5a1 1 0 11-2 0 1 1 0 012 0z"/></svg><span class="text-xs font-medium">Wallet</span></a>
-    <a href="/patient/profile" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg><span class="text-xs">Profile</span></a>
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
+  style="padding-bottom:env(safe-area-inset-bottom)">
+  <div class="flex justify-around items-center h-16">
+    <a href="/patient/dashboard" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Home</span>
+    </a>
+    <a href="/patient/appointments" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Consultations</span>
+    </a>
+    <a href="/patient/ai" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">AI Assistant</span>
+    </a>
+    <a href="/patient/wallet" class="bnav-btn active">
+      <svg class="w-[22px] h-[22px] text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M21 7H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V9a2 2 0 00-2-2zm-1 11H4V9h16v9zm-5-5a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+      <span class="text-[10px] font-bold mt-0.5 text-primary">Wallet</span>
+    </a>
+    <a href="/patient/profile" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Profile</span>
+    </a>
   </div>
 </nav>
 
@@ -372,6 +388,7 @@ function walletApp() {
       const token = localStorage.getItem('ms_token');
       if (!token) { window.location.href = '/login'; return; }
       await Promise.all([this.loadWallet(token), this.loadTransactions(token)]);
+      document.getElementById('wallet-body').classList.remove('opacity-0');
     },
 
     async loadWallet(token) {

@@ -8,9 +8,9 @@
   <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>body{font-family:'Inter',sans-serif;} .form-input{@apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition;}</style>
+  <style>body{font-family:'Inter',sans-serif;} .form-input{@apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition; min-height: 48px;}</style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="profileApp()" x-init="init()">
+<body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="profileApp()" x-init="init()" id="profile-body">
 
 <div class="max-w-2xl mx-auto px-4 py-8 pb-24 lg:pb-8">
 
@@ -149,7 +149,7 @@
 
     <!-- Save button -->
     <button type="submit" :disabled="saving"
-      class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3.5 rounded-xl transition-all shadow-lg shadow-primary/25 disabled:opacity-60 flex items-center justify-center gap-2">
+      class="w-full bg-primary hover:bg-secondary text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-primary/25 disabled:opacity-60 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform min-h-[48px]">
       <svg x-show="saving" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -168,7 +168,7 @@
       <input x-model="pw.current" type="password" placeholder="Current password" class="form-input"/>
       <input x-model="pw.new" type="password" placeholder="New password (min. 8 chars)" class="form-input" minlength="8"/>
       <button @click="changePassword()"
-        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3 rounded-xl transition text-sm">
+        class="w-full bg-gray-900 hover:bg-gray-700 text-white font-semibold py-3.5 rounded-xl active:scale-[0.98] transition-transform text-sm min-h-[48px]">
         Update Password
       </button>
     </div>
@@ -184,27 +184,28 @@
 </div>
 
 <!-- Mobile bottom nav -->
-<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pb-safe">
-  <div class="flex items-center justify-around py-2">
-    <a href="/patient/dashboard" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-      <span class="text-xs">Home</span>
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
+  style="padding-bottom:env(safe-area-inset-bottom)">
+  <div class="flex justify-around items-center h-16">
+    <a href="/patient/dashboard" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Home</span>
     </a>
-    <a href="/patient/appointments" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      <span class="text-xs">Appointments</span>
+    <a href="/patient/appointments" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Consultations</span>
     </a>
-    <a href="/patient/ai" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-      <span class="text-xs">AI Chat</span>
+    <a href="/patient/ai" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">AI Assistant</span>
     </a>
-    <a href="/patient/wallet" class="flex flex-col items-center gap-1 py-2 px-3 text-gray-400">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-      <span class="text-xs">Wallet</span>
+    <a href="/patient/wallet" class="bnav-btn">
+      <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+      <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Wallet</span>
     </a>
-    <a href="/patient/profile" class="flex flex-col items-center gap-1 py-2 px-3 text-primary">
-      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>
-      <span class="text-xs font-medium">Profile</span>
+    <a href="/patient/profile" class="bnav-btn active">
+      <svg class="w-[22px] h-[22px] text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>
+      <span class="text-[10px] font-bold mt-0.5 text-primary">Profile</span>
     </a>
   </div>
 </nav>
@@ -244,6 +245,7 @@ function profileApp() {
           };
         }
       } catch(e) { console.error(e); }
+      document.getElementById('profile-body').classList.remove('opacity-0');
     },
 
     async save() {

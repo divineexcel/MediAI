@@ -37,6 +37,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	campaignRepo      := repo.NewGORMCampaignRepository(db)
 	ussdRepo          := repo.NewGORMUSSDRepository(db)
 	roomRepo          := repo.NewGORMConsultationRoomRepository(db)
+	txer              := repo.NewGORMTransactor(db)
 
 	// ─── INFRASTRUCTURE ──────────────────────────────────────────────────────
 	paystackClient := paystack.NewClient(cfg.Paystack.SecretKey, cfg.Paystack.BaseURL)
@@ -51,7 +52,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	patientSvc := service.NewPatientService(patientRepo, userRepo, walletRepo, notifRepo)
 	doctorSvc  := service.NewDoctorService(doctorRepo, userRepo, walletRepo, notifRepo, apptRepo)
 	walletSvc  := service.NewWalletService(walletRepo, txRepo, savingsRepo, patientRepo, paystackClient)
-	apptSvc    := service.NewAppointmentService(apptRepo, consultRepo, prescRepo, reviewRepo, patientRepo, doctorRepo, walletRepo, txRepo, notifRepo)
+	apptSvc    := service.NewAppointmentService(apptRepo, consultRepo, prescRepo, reviewRepo, patientRepo, doctorRepo, walletRepo, txRepo, notifRepo, txer)
 	aiSvc      := service.NewAIService(aiRepo, patientRepo, aiClient)
 	recordSvc     := service.NewMedicalRecordService(repo.NewGORMMedicalRecordRepository(db), prescRepo, patientRepo)
 	emergencySvc  := service.NewEmergencyService(emergencyRepo, emergencyContRepo, patientRepo, notifRepo)

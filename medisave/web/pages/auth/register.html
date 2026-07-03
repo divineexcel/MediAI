@@ -15,29 +15,29 @@
     .field {
       width: 100%; padding: 12px 16px; border: 1.5px solid #E5E7EB;
       border-radius: 12px; font-size: 14px; outline: none; transition: border-color .15s, box-shadow .15s;
-      background: #fff;
+      background: #fff; min-height: 48px;
     }
     .field:focus { border-color: #0F9D58; box-shadow: 0 0 0 3px rgba(15,157,88,.1); }
-
+ 
     /* ── Upload box ── */
     .upload-zone {
       border: 2px dashed #D1D5DB; border-radius: 16px; padding: 24px 16px;
       text-align: center; transition: all .2s; cursor: pointer; background: #FAFAFA;
-      position: relative; overflow: hidden;
+      position: relative; overflow: hidden; min-height: 120px;
     }
     .upload-zone:hover, .upload-zone.drag { border-color: #0F9D58; background: #F0FDF4; }
     .upload-zone.done  { border-color: #0F9D58; background: #F0FDF4; border-style: solid; }
     .upload-zone.error { border-color: #EF4444; background: #FEF2F2; border-style: solid; }
     .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-
+ 
     /* ── Progress bar ── */
     @keyframes progressSlide { from{width:0} to{width:var(--pct)} }
     .progress-bar { animation: progressSlide .4s ease forwards; }
-
+ 
     /* ── Spinner ── */
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin { animation: spin .8s linear infinite; }
-
+ 
     /* ── Step indicator ── */
     .step-dot {
       width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB; transition: all .2s;
@@ -48,9 +48,9 @@
 </head>
 <body class="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center p-4 py-10"
   x-data="registerApp()" x-cloak>
-
-<div class="w-full max-w-lg">
-
+ 
+<div class="w-full max-w-lg opacity-0 transition-opacity duration-500 ease-out" id="register-container">
+ 
   <!-- Brand -->
   <div class="text-center mb-7">
     <div class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary to-secondary rounded-2xl shadow-lg shadow-primary/30 mb-3">
@@ -61,12 +61,12 @@
     <h1 class="text-2xl font-bold text-gray-900">Create your MediSave account</h1>
     <p class="text-gray-500 text-sm mt-1">Your health journey starts here</p>
   </div>
-
+ 
   <!-- Role toggle -->
   <div class="flex bg-gray-100 p-1 rounded-2xl mb-6">
     <button type="button" @click="switchRole('patient')"
       :class="form.role==='patient' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'"
-      class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+      class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
       </svg>
@@ -74,14 +74,14 @@
     </button>
     <button type="button" @click="switchRole('doctor')"
       :class="form.role==='doctor' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'"
-      class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+      class="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
       </svg>
       I'm a Doctor
     </button>
   </div>
-
+ 
   <!-- Doctor step indicators -->
   <template x-if="form.role === 'doctor'">
     <div class="flex items-center justify-center gap-3 mb-5">
@@ -101,10 +101,10 @@
       </div>
     </div>
   </template>
-
+ 
   <!-- Card -->
-  <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
-
+  <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 sm:p-8">
+ 
     <!-- Global error -->
     <div x-show="error" x-transition
       class="mb-5 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start gap-2">
@@ -587,6 +587,11 @@ function registerApp() {
     }
   };
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+  const container = document.getElementById('register-container');
+  if (container) container.classList.remove('opacity-0');
+});
 </script>
 </body>
 </html>

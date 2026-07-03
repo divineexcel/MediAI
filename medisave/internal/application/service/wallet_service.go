@@ -275,20 +275,51 @@ func (s *walletService) Withdraw(ctx context.Context, userID uint, req *dto.With
 
 	reference := utils.GenerateReference("WTH")
 
-	// Create transfer recipient on Paystack
-	recipientCode, err := s.paystack.CreateTransferRecipient(req.AccountName, req.AccountNo, req.BankCode)
-	if err != nil {
-		return nil, fmt.Errorf("payment gateway error: %w", err)
-	}
-
-	// Debit wallet optimistically (refunded on transfer.reversed webhook)
-	if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, -req.Amount); err != nil {
-		return nil, pkgerrors.ErrInternalServer
-	}
-
 	narration := req.Narration
 	if narration == "" {
 		narration = "MediSave wallet withdrawal"
+	}
+
+	isDummy := s.paystack.IsDummy()
+
+	if !isDummy {
+		// Create transfer recipient on Paystack
+		recipientCode, err := s.paystack.CreateTransferRecipient(req.AccountName, req.AccountNo, req.BankCode)
+		if err != nil {
+			return nil, fmt.Errorf("payment gateway error: %w", err)
+		}
+
+		// Debit wallet optimistically (refunded on transfer.reversed webhook)
+		if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, -req.Amount); err != nil {
+			return nil, pkgerrors.ErrInternalServer
+		}
+
+		tx := &entity.Transaction{
+			Reference:     reference,
+			WalletID:      wallet.ID,
+			Type:          entity.TxTypeWithdrawal,
+			Amount:        req.Amount,
+			BalanceBefore: wallet.Balance,
+			BalanceAfter:  wallet.Balance - req.Amount,
+			Status:        entity.TxStatusPending,
+			Description:   narration,
+		}
+		if err := s.txRepo.Create(ctx, tx); err != nil {
+			return nil, pkgerrors.ErrInternalServer
+		}
+
+		// Initiate Paystack transfer (async — result comes via webhook)
+		amountKobo := int64(req.Amount * 100)
+		go func() {
+			_ = s.paystack.InitiateTransfer(amountKobo, recipientCode, reference, narration)
+		}()
+
+		return tx, nil
+	}
+
+	// ─── Dev/Dummy mode: debit wallet and mark success immediately ─
+	if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, -req.Amount); err != nil {
+		return nil, pkgerrors.ErrInternalServer
 	}
 
 	tx := &entity.Transaction{
@@ -298,18 +329,12 @@ func (s *walletService) Withdraw(ctx context.Context, userID uint, req *dto.With
 		Amount:        req.Amount,
 		BalanceBefore: wallet.Balance,
 		BalanceAfter:  wallet.Balance - req.Amount,
-		Status:        entity.TxStatusPending,
-		Description:   narration,
+		Status:        entity.TxStatusSuccess,
+		Description:   narration + " (demo)",
 	}
 	if err := s.txRepo.Create(ctx, tx); err != nil {
 		return nil, pkgerrors.ErrInternalServer
 	}
-
-	// Initiate Paystack transfer (async — result comes via webhook)
-	amountKobo := int64(req.Amount * 100)
-	go func() {
-		_ = s.paystack.InitiateTransfer(amountKobo, recipientCode, reference, narration)
-	}()
 
 	return tx, nil
 }

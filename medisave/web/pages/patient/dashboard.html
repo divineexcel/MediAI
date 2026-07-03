@@ -88,7 +88,7 @@
     .slide-up { animation: slideUp .25s cubic-bezier(.4,0,.2,1); }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="dashApp()" x-init="init()">
+<body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="dashApp()" x-init="init()" id="dash-body">
 
 <!-- ════════════════════════════════════════════════════════
      DESKTOP  (lg+)
@@ -423,40 +423,56 @@
       </div>
     </div>
 
-    <!-- Stats row (scrollable) -->
-    <div class="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1" style="scrollbar-width:none">
-      <div class="stat-card shrink-0 w-36">
-        <div class="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mb-2">
-          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+    <!-- Stats Grid (2x2) -->
+    <div class="grid grid-cols-2 gap-3">
+      <!-- Wallet Card -->
+      <a href="/patient/wallet" class="stat-card flex flex-col justify-between active:scale-[0.98] transition-transform">
+        <div>
+          <div class="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-5 w-20 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="'₦'+(dash?.wallet_balance||0).toLocaleString('en-NG')"></p></template>
         </div>
-        <template x-if="loading"><div class="skeleton h-5 w-20 mb-1"></div></template>
-        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="'₦'+(dash?.wallet_balance||0).toLocaleString('en-NG')"></p></template>
-        <p class="text-xs text-gray-400 mt-0.5">Wallet</p>
-      </div>
-      <div class="stat-card shrink-0 w-28">
-        <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
-          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <p class="text-xs text-gray-400 mt-1 font-medium">Wallet Balance</p>
+      </a>
+
+      <!-- Appointments Card -->
+      <a href="/patient/appointments" class="stat-card flex flex-col justify-between active:scale-[0.98] transition-transform">
+        <div>
+          <div class="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-5 w-8 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.upcoming_appointments||0"></p></template>
         </div>
-        <template x-if="loading"><div class="skeleton h-5 w-8 mb-1"></div></template>
-        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.upcoming_appointments||0"></p></template>
-        <p class="text-xs text-gray-400 mt-0.5">Appointments</p>
-      </div>
-      <div class="stat-card shrink-0 w-28">
-        <div class="w-8 h-8 bg-orange-50 rounded-xl flex items-center justify-center mb-2">
-          <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <p class="text-xs text-gray-400 mt-1 font-medium">Upcoming Appts</p>
+      </a>
+
+      <!-- Health Score Card -->
+      <a href="/patient/ai" class="stat-card flex flex-col justify-between active:scale-[0.98] transition-transform">
+        <div>
+          <div class="w-8 h-8 bg-orange-50 rounded-xl flex items-center justify-center mb-2">
+            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <template x-if="loading"><div class="skeleton h-5 w-12 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="(dash?.health_score||0)+'/100'"></p></template>
         </div>
-        <template x-if="loading"><div class="skeleton h-5 w-12 mb-1"></div></template>
-        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="(dash?.health_score||0)+'/100'"></p></template>
-        <p class="text-xs text-gray-400 mt-0.5">Health Score</p>
-      </div>
-      <div class="stat-card shrink-0 w-28">
-        <div class="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center mb-2">
-          <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <p class="text-xs text-gray-400 mt-1 font-medium">Health Score</p>
+      </a>
+
+      <!-- Notifications / Alerts Card -->
+      <button @click="openNotifications()" class="stat-card flex flex-col justify-between text-left active:scale-[0.98] transition-transform w-full">
+        <div>
+          <div class="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center mb-2 relative">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+            <span x-show="dash && dash.unread_notifications > 0" class="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>
+          </div>
+          <template x-if="loading"><div class="skeleton h-5 w-8 mb-1"></div></template>
+          <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.unread_notifications||0"></p></template>
         </div>
-        <template x-if="loading"><div class="skeleton h-5 w-8 mb-1"></div></template>
-        <template x-if="!loading"><p class="text-base font-bold text-gray-900" x-text="dash?.unread_notifications||0"></p></template>
-        <p class="text-xs text-gray-400 mt-0.5">Alerts</p>
-      </div>
+        <p class="text-xs text-gray-400 mt-1 font-medium">Unread Alerts</p>
+      </button>
     </div>
 
     <!-- Feature cards 2×4 grid -->
@@ -552,36 +568,36 @@
   </div><!-- /scrollable -->
 
   <!-- ── Mobile bottom nav ── -->
-  <nav class="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100"
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
     style="padding-bottom:env(safe-area-inset-bottom)">
-    <div class="flex">
+    <div class="flex justify-around items-center h-16">
       <a href="/patient/dashboard" class="bnav-btn active">
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-        Home
+        <svg class="w-[22px] h-[22px]" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Home</span>
       </a>
       <a href="/patient/appointments" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
         </svg>
-        Schedule
+        <span class="text-[10px] font-semibold mt-0.5">Consultations</span>
       </a>
       <a href="/patient/ai" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
         </svg>
-        AI
+        <span class="text-[10px] font-semibold mt-0.5">AI Assistant</span>
       </a>
       <a href="/patient/wallet" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
         </svg>
-        Wallet
+        <span class="text-[10px] font-semibold mt-0.5">Wallet</span>
       </a>
       <a href="/patient/profile" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <svg class="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
         </svg>
-        Profile
+        <span class="text-[10px] font-semibold mt-0.5">Profile</span>
       </a>
     </div>
   </nav>
@@ -602,6 +618,7 @@ function dashApp() {
       const stored = localStorage.getItem('ms_user');
       if (stored) this.user = JSON.parse(stored);
       await this.loadDashboard(token);
+      document.getElementById('dash-body').classList.remove('opacity-0');
     },
 
     async loadDashboard(token) {
@@ -749,8 +766,11 @@ function dashApp() {
 }
 </script>
   <!-- Notifications Panel / Modal -->
-  <div x-show="showNotifications" class="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm" x-transition x-cloak>
-    <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl" @click.stop>
+  <div x-show="showNotifications" class="fixed inset-0 z-50 flex items-end lg:items-stretch lg:justify-end bg-black/50 backdrop-blur-sm" x-transition x-cloak>
+    <div class="bg-white w-full lg:max-w-md h-[85vh] lg:h-full rounded-t-[32px] lg:rounded-none flex flex-col shadow-2xl transition-all" @click.stop>
+      <!-- Drag handle for mobile -->
+      <div class="lg:hidden w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 shrink-0"></div>
+      
       <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
         <div>
           <h2 class="text-lg font-bold text-gray-900">Notifications & Alerts</h2>

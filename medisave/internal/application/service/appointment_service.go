@@ -41,6 +41,7 @@ type appointmentService struct {
 	walletRepo  repository.WalletRepository
 	txRepo      repository.TransactionRepository
 	notifRepo   repository.NotificationRepository
+	txer        repository.Transactor
 }
 
 func NewAppointmentService(
@@ -53,6 +54,7 @@ func NewAppointmentService(
 	walletRepo repository.WalletRepository,
 	txRepo repository.TransactionRepository,
 	notifRepo repository.NotificationRepository,
+	txer repository.Transactor,
 ) AppointmentService {
 	return &appointmentService{
 		apptRepo:    apptRepo,
@@ -64,6 +66,7 @@ func NewAppointmentService(
 		walletRepo:  walletRepo,
 		txRepo:      txRepo,
 		notifRepo:   notifRepo,
+		txer:        txer,
 	}
 }
 
@@ -117,56 +120,81 @@ func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.Boo
 		return nil, pkgerrors.ErrInternalServer
 	}
 
-	// Debit patient → credit doctor immediately (no escrow)
-	if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, -fee); err != nil {
-		return nil, pkgerrors.ErrInternalServer
-	}
-	if err := s.walletRepo.UpdateBalance(ctx, doctorWallet.ID, fee); err != nil {
-		_ = s.walletRepo.UpdateBalance(ctx, wallet.ID, fee) // rollback patient debit
-		return nil, pkgerrors.ErrInternalServer
-	}
+	var resp *dto.AppointmentBookedResponse
+	err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+		// Debit patient → credit doctor immediately (no escrow)
+		if err := s.walletRepo.UpdateBalance(txCtx, wallet.ID, -fee); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
+		if err := s.walletRepo.UpdateBalance(txCtx, doctorWallet.ID, fee); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
 
-	// Record patient debit
-	ref := utils.GenerateReference("PAY")
-	tx := &entity.Transaction{
-		Reference:     ref,
-		WalletID:      wallet.ID,
-		Type:          entity.TxTypePayment,
-		Amount:        fee,
-		BalanceBefore: wallet.Balance,
-		BalanceAfter:  wallet.Balance - fee,
-		Status:        entity.TxStatusSuccess,
-		Description:   fmt.Sprintf("Consultation fee — Dr. %s %s", doctor.User.FirstName, doctor.User.LastName),
-	}
-	_ = s.txRepo.Create(ctx, tx)
+		// Record patient debit
+		ref := utils.GenerateReference("PAY")
+		tx := &entity.Transaction{
+			Reference:     ref,
+			WalletID:      wallet.ID,
+			Type:          entity.TxTypePayment,
+			Amount:        fee,
+			BalanceBefore: wallet.Balance,
+			BalanceAfter:  wallet.Balance - fee,
+			Status:        entity.TxStatusSuccess,
+			Description:   fmt.Sprintf("Consultation fee — Dr. %s %s", doctor.User.FirstName, doctor.User.LastName),
+		}
+		if err := s.txRepo.Create(txCtx, tx); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
 
-	// Record doctor credit
-	_ = s.txRepo.Create(ctx, &entity.Transaction{
-		Reference:     utils.GenerateReference("CRD"),
-		WalletID:      doctorWallet.ID,
-		Type:          entity.TxTypeConsultationCredit,
-		Amount:        fee,
-		BalanceBefore: doctorWallet.Balance,
-		BalanceAfter:  doctorWallet.Balance + fee,
-		Status:        entity.TxStatusSuccess,
-		Description:   fmt.Sprintf("Consultation fee from %s %s", patient.User.FirstName, patient.User.LastName),
+		// Record doctor credit
+		if err := s.txRepo.Create(txCtx, &entity.Transaction{
+			Reference:     utils.GenerateReference("CRD"),
+			WalletID:      doctorWallet.ID,
+			Type:          entity.TxTypeConsultationCredit,
+			Amount:        fee,
+			BalanceBefore: doctorWallet.Balance,
+			BalanceAfter:  doctorWallet.Balance + fee,
+			Status:        entity.TxStatusSuccess,
+			Description:   fmt.Sprintf("Consultation fee from %s %s", patient.User.FirstName, patient.User.LastName),
+		}); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
+
+		appt := &entity.Appointment{
+			PatientID:       patient.ID,
+			DoctorID:        doctor.ID,
+			Type:            entity.AppointmentType(req.Type),
+			Status:          entity.AppointmentStatusPending,
+			ScheduledAt:     scheduledAt,
+			ConsultationFee: fee,
+			TransactionID:   tx.ID,
+			ChiefComplaint:  req.ChiefComplaint,
+		}
+		if err := s.apptRepo.Create(txCtx, appt); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
+
+		// Reload appointment with associations (still within tx)
+		appt, _ = s.apptRepo.FindByID(txCtx, appt.ID)
+
+		resp = &dto.AppointmentBookedResponse{
+			Appointment: buildApptResponse(appt),
+			Transaction: dto.TransactionResponse{
+				ID:        tx.ID,
+				Reference: tx.Reference,
+				Type:      tx.Type,
+				Amount:    tx.Amount,
+				Status:    tx.Status,
+			},
+			Message: "Appointment booked. Consultation fee has been paid to the doctor.",
+		}
+		return nil
 	})
-
-	appt := &entity.Appointment{
-		PatientID:       patient.ID,
-		DoctorID:        doctor.ID,
-		Type:            entity.AppointmentType(req.Type),
-		Status:          entity.AppointmentStatusPending,
-		ScheduledAt:     scheduledAt,
-		ConsultationFee: fee,
-		TransactionID:   tx.ID,
-		ChiefComplaint:  req.ChiefComplaint,
-	}
-	if err := s.apptRepo.Create(ctx, appt); err != nil {
-		return nil, pkgerrors.ErrInternalServer
+	if err != nil {
+		return nil, err
 	}
 
-	// Notify doctor
+	// Notify doctor (outside transaction — non-critical)
 	_ = s.notifRepo.Create(ctx, &entity.Notification{
 		UserID:  doctor.UserID,
 		Title:   "New Appointment Booked",
@@ -175,20 +203,7 @@ func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.Boo
 		Channel: entity.ChannelInApp,
 	})
 
-	// Reload appointment with associations
-	appt, _ = s.apptRepo.FindByID(ctx, appt.ID)
-
-	return &dto.AppointmentBookedResponse{
-		Appointment: buildApptResponse(appt),
-		Transaction: dto.TransactionResponse{
-			ID:        tx.ID,
-			Reference: tx.Reference,
-			Type:      tx.Type,
-			Amount:    tx.Amount,
-			Status:    tx.Status,
-		},
-		Message: "Appointment booked. Consultation fee has been paid to the doctor.",
-	}, nil
+	return resp, nil
 }
 
 // ─── Appointment: Get ─────────────────────────────────────────────────────────
@@ -240,34 +255,53 @@ func (s *appointmentService) Cancel(ctx context.Context, userID uint, role entit
 	docWallet, dErr := s.walletRepo.FindByUserID(ctx, appt.Doctor.UserID)
 	if pErr == nil && dErr == nil {
 		fee := appt.ConsultationFee
-		_ = s.walletRepo.UpdateBalance(ctx, docWallet.ID, -fee)
-		_ = s.walletRepo.UpdateBalance(ctx, patientWallet.ID, fee)
-		_ = s.txRepo.Create(ctx, &entity.Transaction{
-			Reference:     utils.GenerateReference("REF"),
-			WalletID:      patientWallet.ID,
-			Type:          entity.TxTypeRefund,
-			Amount:        fee,
-			BalanceBefore: patientWallet.Balance,
-			BalanceAfter:  patientWallet.Balance + fee,
-			Status:        entity.TxStatusSuccess,
-			Description:   "Consultation fee refunded — appointment cancelled",
+		err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+			if err := s.walletRepo.UpdateBalance(txCtx, docWallet.ID, -fee); err != nil {
+				return pkgerrors.ErrInternalServer
+			}
+			if err := s.walletRepo.UpdateBalance(txCtx, patientWallet.ID, fee); err != nil {
+				return pkgerrors.ErrInternalServer
+			}
+			if err := s.txRepo.Create(txCtx, &entity.Transaction{
+				Reference:     utils.GenerateReference("REF"),
+				WalletID:      patientWallet.ID,
+				Type:          entity.TxTypeRefund,
+				Amount:        fee,
+				BalanceBefore: patientWallet.Balance,
+				BalanceAfter:  patientWallet.Balance + fee,
+				Status:        entity.TxStatusSuccess,
+				Description:   "Consultation fee refunded — appointment cancelled",
+			}); err != nil {
+				return pkgerrors.ErrInternalServer
+			}
+			if err := s.txRepo.Create(txCtx, &entity.Transaction{
+				Reference:     utils.GenerateReference("DRF"),
+				WalletID:      docWallet.ID,
+				Type:          entity.TxTypeRefund,
+				Amount:        fee,
+				BalanceBefore: docWallet.Balance,
+				BalanceAfter:  docWallet.Balance - fee,
+				Status:        entity.TxStatusSuccess,
+				Description:   "Refund issued — appointment cancelled",
+			}); err != nil {
+				return pkgerrors.ErrInternalServer
+			}
+			appt.Status = entity.AppointmentStatusCancelled
+			appt.CancelReason = reason
+			if err := s.apptRepo.Update(txCtx, appt); err != nil {
+				return pkgerrors.ErrInternalServer
+			}
+			return nil
 		})
-		_ = s.txRepo.Create(ctx, &entity.Transaction{
-			Reference:     utils.GenerateReference("DRF"),
-			WalletID:      docWallet.ID,
-			Type:          entity.TxTypeRefund,
-			Amount:        fee,
-			BalanceBefore: docWallet.Balance,
-			BalanceAfter:  docWallet.Balance - fee,
-			Status:        entity.TxStatusSuccess,
-			Description:   "Refund issued — appointment cancelled",
-		})
-	}
-
-	appt.Status = entity.AppointmentStatusCancelled
-	appt.CancelReason = reason
-	if err := s.apptRepo.Update(ctx, appt); err != nil {
-		return pkgerrors.ErrInternalServer
+		if err != nil {
+			return err
+		}
+	} else {
+		appt.Status = entity.AppointmentStatusCancelled
+		appt.CancelReason = reason
+		if err := s.apptRepo.Update(ctx, appt); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
 	}
 
 	// Notify the other party

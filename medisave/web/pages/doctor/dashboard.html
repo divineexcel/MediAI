@@ -61,10 +61,10 @@
 
     /* ── Bottom nav ── */
     .bnav-btn {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      flex: 1; padding: 9px 4px 6px; color: #9CA3AF; font-size: 10px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex: 1; padding: 6px 0; color: #9CA3AF; font-size: 10px;
       font-weight: 500; background: none; border: none; cursor: pointer;
-      transition: color .15s; text-decoration: none;
+      transition: color .15s; text-decoration: none; -webkit-tap-highlight-color: transparent;
     }
     .bnav-btn.active { color: #0F9D58; }
 
@@ -80,7 +80,7 @@
     }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen" x-data="doctorDashApp()" x-init="init()">
+<body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="doctorDashApp()" x-init="init()" id="doctor-body">
 
 <!-- ════════════════════════════════════════════════════════
      DESKTOP  (lg+)
@@ -540,28 +540,28 @@
       <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Access</h3>
       <div class="grid grid-cols-2 gap-3">
 
-        <a href="/doctor/appointments" class="feat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+        <a href="/doctor/appointments" class="feat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white active:scale-[0.98] transition-all">
           <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
           <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
           <p class="text-sm font-bold">Appointments</p>
           <p class="text-xs text-blue-100 mt-0.5">Schedule &amp; manage</p>
         </a>
 
-        <a href="/doctor/patients" class="feat-card bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+        <a href="/doctor/patients" class="feat-card bg-gradient-to-br from-violet-500 to-purple-600 text-white active:scale-[0.98] transition-all">
           <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
           <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
           <p class="text-sm font-bold">My Patients</p>
           <p class="text-xs text-purple-200 mt-0.5">View history</p>
         </a>
 
-        <a href="/doctor/earnings" class="feat-card bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+        <a href="/doctor/earnings" class="feat-card bg-gradient-to-br from-emerald-500 to-green-600 text-white active:scale-[0.98] transition-all">
           <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
           <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
           <p class="text-sm font-bold">Earnings</p>
           <p class="text-xs text-green-100 mt-0.5">Wallet &amp; payouts</p>
         </a>
 
-        <a href="/doctor/profile" class="feat-card bg-gradient-to-br from-amber-400 to-orange-500 text-white">
+        <a href="/doctor/profile" class="feat-card bg-gradient-to-br from-amber-400 to-orange-500 text-white active:scale-[0.98] transition-all">
           <span class="card-arrow"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
           <div class="card-icon w-10 h-10 rounded-xl mb-3"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div>
           <p class="text-sm font-bold">My Profile</p>
@@ -619,36 +619,28 @@
   </div>
 
   <!-- Mobile bottom nav -->
-  <nav class="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100"
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
     style="padding-bottom:env(safe-area-inset-bottom)">
-    <div class="flex">
+    <div class="flex justify-around items-center h-16">
       <a href="/doctor/dashboard" class="bnav-btn active">
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-        Home
+        <svg class="w-[22px] h-[22px] text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span class="text-[10px] font-bold mt-0.5 text-primary">Home</span>
       </a>
       <a href="/doctor/appointments" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-        </svg>
-        Schedule
+        <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Schedule</span>
       </a>
       <a href="/doctor/patients" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        Patients
+        <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Patients</span>
       </a>
       <a href="/doctor/earnings" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        Earnings
+        <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Earnings</span>
       </a>
       <a href="/doctor/profile" class="bnav-btn">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-        </svg>
-        Profile
+        <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Profile</span>
       </a>
     </div>
   </nav>
@@ -683,7 +675,10 @@ function doctorDashApp() {
           if (data.data.doctor?.user) this.user = data.data.doctor.user;
         }
       } catch(e) {}
-      finally { this.loading = false; }
+      finally {
+        this.loading = false;
+        document.getElementById('doctor-body').classList.remove('opacity-0');
+      }
     },
 
     async toggleAvailability() {
