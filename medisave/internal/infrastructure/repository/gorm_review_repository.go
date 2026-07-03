@@ -20,13 +20,20 @@ func NewGORMReviewRepository(db *gorm.DB) domainrepo.ReviewRepository {
 	return &GORMReviewRepository{db: db}
 }
 
+func (r *GORMReviewRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMReviewRepository) Create(ctx context.Context, rev *entity.Review) error {
-	return r.db.WithContext(ctx).Create(rev).Error
+	return r.dbc(ctx).Create(rev).Error
 }
 
 func (r *GORMReviewRepository) FindByID(ctx context.Context, id uint) (*entity.Review, error) {
 	var rev entity.Review
-	err := r.db.WithContext(ctx).Preload("Patient.User").First(&rev, id).Error
+	err := r.dbc(ctx).Preload("Patient.User").First(&rev, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrReviewNotFound
 	}
@@ -35,7 +42,7 @@ func (r *GORMReviewRepository) FindByID(ctx context.Context, id uint) (*entity.R
 
 func (r *GORMReviewRepository) FindByAppointmentID(ctx context.Context, appointmentID uint) (*entity.Review, error) {
 	var rev entity.Review
-	err := r.db.WithContext(ctx).Where("appointment_id = ?", appointmentID).First(&rev).Error
+	err := r.dbc(ctx).Where("appointment_id = ?", appointmentID).First(&rev).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrReviewNotFound
 	}
@@ -46,7 +53,7 @@ func (r *GORMReviewRepository) ListByDoctor(ctx context.Context, doctorID uint, 
 	var list []*entity.Review
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.Review{}).
+	q := r.dbc(ctx).Model(&entity.Review{}).
 		Where("doctor_id = ? AND is_visible = true", doctorID)
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -62,7 +69,7 @@ func (r *GORMReviewRepository) AverageRatingByDoctor(ctx context.Context, doctor
 		Avg   float64
 		Count int
 	}
-	err := r.db.WithContext(ctx).Model(&entity.Review{}).
+	err := r.dbc(ctx).Model(&entity.Review{}).
 		Select("COALESCE(AVG(rating), 0) as avg, COUNT(*) as count").
 		Where("doctor_id = ? AND is_visible = true", doctorID).
 		Scan(&result).Error

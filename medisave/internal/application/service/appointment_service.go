@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/medisave/app/internal/application/dto"
 	"github.com/medisave/app/internal/domain/entity"
 	"github.com/medisave/app/internal/domain/repository"
 	pkgerrors "github.com/medisave/app/pkg/errors"
+	"github.com/medisave/app/pkg/logger"
 	"github.com/medisave/app/pkg/pagination"
 	"github.com/medisave/app/pkg/utils"
 )
@@ -73,60 +76,77 @@ func NewAppointmentService(
 // ─── Appointment: Book ────────────────────────────────────────────────────────
 
 func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.BookAppointmentRequest) (*dto.AppointmentBookedResponse, error) {
+	logger.Info("booking appointment", zap.Uint("user_id", userID), zap.Uint("doctor_id", req.DoctorID), zap.String("scheduled_at", req.ScheduledAt))
+
 	patient, err := s.patientRepo.FindByUserID(ctx, userID)
 	if err != nil {
+		logger.Warn("booking failed: patient not found", zap.Uint("user_id", userID))
 		return nil, pkgerrors.ErrPatientNotFound
 	}
 
 	doctor, err := s.doctorRepo.FindByID(ctx, req.DoctorID)
 	if err != nil {
+		logger.Warn("booking failed: doctor not found", zap.Uint("doctor_id", req.DoctorID))
 		return nil, pkgerrors.ErrDoctorNotFound
 	}
 	if doctor.Status != entity.DoctorStatusVerified {
+		logger.Warn("booking failed: doctor not verified", zap.Uint("doctor_id", req.DoctorID))
 		return nil, pkgerrors.ErrDoctorNotVerified
 	}
 	if !doctor.IsAvailable {
+		logger.Warn("booking failed: doctor unavailable", zap.Uint("doctor_id", req.DoctorID))
 		return nil, pkgerrors.ErrDoctorUnavailable
 	}
 
 	scheduledAt, err := time.Parse(time.RFC3339, req.ScheduledAt)
 	if err != nil {
+		logger.Warn("booking failed: invalid schedule format", zap.String("scheduled_at", req.ScheduledAt))
 		return nil, pkgerrors.ErrInvalidScheduleFormat
 	}
 
 	conflict, err := s.apptRepo.FindConflict(ctx, doctor.ID, scheduledAt)
 	if err != nil {
+		logger.Error("booking failed: check conflict error", zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 	if conflict != nil {
+		logger.Warn("booking failed: schedule conflict", zap.Uint("doctor_id", doctor.ID), zap.Time("scheduled_at", scheduledAt))
 		return nil, pkgerrors.ErrAppointmentConflict
 	}
 
 	wallet, err := s.walletRepo.FindByUserID(ctx, userID)
 	if err != nil {
+		logger.Warn("booking failed: wallet not found", zap.Uint("user_id", userID))
 		return nil, pkgerrors.ErrWalletNotFound
 	}
 	if !wallet.IsActive {
+		logger.Warn("booking failed: wallet inactive", zap.Uint("wallet_id", wallet.ID))
 		return nil, pkgerrors.ErrWalletInactive
 	}
 	fee := doctor.ConsultationFee
 	if wallet.Balance < fee {
+		logger.Warn("booking failed: insufficient funds", zap.Uint("wallet_id", wallet.ID), zap.Float64("balance", wallet.Balance), zap.Float64("fee", fee))
 		return nil, pkgerrors.ErrInsufficientFunds
 	}
 
 	// Find doctor wallet
 	doctorWallet, err := s.walletRepo.FindByUserID(ctx, doctor.UserID)
 	if err != nil {
+		logger.Error("booking failed: doctor wallet not found", zap.Uint("doctor_user_id", doctor.UserID), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
 	var resp *dto.AppointmentBookedResponse
 	err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+		logger.Info("executing booking transaction", zap.Uint("wallet_id", wallet.ID), zap.Uint("doctor_wallet_id", doctorWallet.ID), zap.Float64("fee", fee))
+
 		// Debit patient → credit doctor immediately (no escrow)
 		if err := s.walletRepo.UpdateBalance(txCtx, wallet.ID, -fee); err != nil {
+			logger.Error("booking failed: patient debit", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 		if err := s.walletRepo.UpdateBalance(txCtx, doctorWallet.ID, fee); err != nil {
+			logger.Error("booking failed: doctor credit", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -143,6 +163,7 @@ func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.Boo
 			Description:   fmt.Sprintf("Consultation fee — Dr. %s %s", doctor.User.FirstName, doctor.User.LastName),
 		}
 		if err := s.txRepo.Create(txCtx, tx); err != nil {
+			logger.Error("booking failed: record patient transaction", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -157,6 +178,7 @@ func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.Boo
 			Status:        entity.TxStatusSuccess,
 			Description:   fmt.Sprintf("Consultation fee from %s %s", patient.User.FirstName, patient.User.LastName),
 		}); err != nil {
+			logger.Error("booking failed: record doctor transaction", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -171,6 +193,7 @@ func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.Boo
 			ChiefComplaint:  req.ChiefComplaint,
 		}
 		if err := s.apptRepo.Create(txCtx, appt); err != nil {
+			logger.Error("booking failed: create appointment record", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -191,8 +214,11 @@ func (s *appointmentService) Book(ctx context.Context, userID uint, req *dto.Boo
 		return nil
 	})
 	if err != nil {
+		logger.Error("booking transaction failed", zap.Error(err))
 		return nil, err
 	}
+
+	logger.Info("appointment booked successfully", zap.Uint("appt_id", resp.Appointment.ID))
 
 	// Notify doctor (outside transaction — non-critical)
 	_ = s.notifRepo.Create(ctx, &entity.Notification{
@@ -239,14 +265,19 @@ func (s *appointmentService) List(ctx context.Context, userID uint, role entity.
 // ─── Appointment: Cancel ──────────────────────────────────────────────────────
 
 func (s *appointmentService) Cancel(ctx context.Context, userID uint, role entity.Role, apptID uint, reason string) error {
+	logger.Info("cancelling appointment", zap.Uint("user_id", userID), zap.String("role", string(role)), zap.Uint("appt_id", apptID))
+
 	appt, err := s.apptRepo.FindByID(ctx, apptID)
 	if err != nil {
+		logger.Warn("cancellation failed: appointment not found", zap.Uint("appt_id", apptID))
 		return err
 	}
 	if err := s.assertParticipant(ctx, userID, role, appt); err != nil {
+		logger.Warn("cancellation failed: forbidden participant", zap.Uint("user_id", userID), zap.Uint("appt_id", apptID))
 		return err
 	}
 	if appt.Status != entity.AppointmentStatusPending && appt.Status != entity.AppointmentStatusConfirmed {
+		logger.Warn("cancellation failed: appointment status not cancelable", zap.String("status", string(appt.Status)))
 		return pkgerrors.ErrAppointmentNotPending
 	}
 
@@ -256,10 +287,14 @@ func (s *appointmentService) Cancel(ctx context.Context, userID uint, role entit
 	if pErr == nil && dErr == nil {
 		fee := appt.ConsultationFee
 		err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+			logger.Info("executing cancel refund transaction", zap.Uint("doc_wallet_id", docWallet.ID), zap.Uint("patient_wallet_id", patientWallet.ID), zap.Float64("fee", fee))
+
 			if err := s.walletRepo.UpdateBalance(txCtx, docWallet.ID, -fee); err != nil {
+				logger.Error("cancellation refund failed: doctor debit", zap.Error(err))
 				return pkgerrors.ErrInternalServer
 			}
 			if err := s.walletRepo.UpdateBalance(txCtx, patientWallet.ID, fee); err != nil {
+				logger.Error("cancellation refund failed: patient credit", zap.Error(err))
 				return pkgerrors.ErrInternalServer
 			}
 			if err := s.txRepo.Create(txCtx, &entity.Transaction{
@@ -272,6 +307,7 @@ func (s *appointmentService) Cancel(ctx context.Context, userID uint, role entit
 				Status:        entity.TxStatusSuccess,
 				Description:   "Consultation fee refunded — appointment cancelled",
 			}); err != nil {
+				logger.Error("cancellation refund failed: record patient refund", zap.Error(err))
 				return pkgerrors.ErrInternalServer
 			}
 			if err := s.txRepo.Create(txCtx, &entity.Transaction{
@@ -284,25 +320,32 @@ func (s *appointmentService) Cancel(ctx context.Context, userID uint, role entit
 				Status:        entity.TxStatusSuccess,
 				Description:   "Refund issued — appointment cancelled",
 			}); err != nil {
+				logger.Error("cancellation refund failed: record doctor refund", zap.Error(err))
 				return pkgerrors.ErrInternalServer
 			}
 			appt.Status = entity.AppointmentStatusCancelled
 			appt.CancelReason = reason
 			if err := s.apptRepo.Update(txCtx, appt); err != nil {
+				logger.Error("cancellation refund failed: update appointment cancelled status", zap.Error(err))
 				return pkgerrors.ErrInternalServer
 			}
 			return nil
 		})
 		if err != nil {
+			logger.Error("cancellation refund transaction failed", zap.Error(err))
 			return err
 		}
 	} else {
+		logger.Warn("cancellation refund skipped: wallets not loaded", zap.Error(pErr), zap.Error(dErr))
 		appt.Status = entity.AppointmentStatusCancelled
 		appt.CancelReason = reason
 		if err := s.apptRepo.Update(ctx, appt); err != nil {
+			logger.Error("cancellation failed: update status", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 	}
+
+	logger.Info("appointment cancelled successfully", zap.Uint("appt_id", appt.ID))
 
 	// Notify the other party
 	otherUserID := appt.Doctor.UserID

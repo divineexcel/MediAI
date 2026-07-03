@@ -2,8 +2,6 @@ package migrations
 
 import (
 	"gorm.io/gorm"
-
-	"github.com/medisave/app/internal/domain/entity"
 )
 
 // migration001InitialSchema creates every table in dependency order.
@@ -18,29 +16,6 @@ func migration001InitialSchema() Migration {
 }
 
 func up001(db *gorm.DB) error {
-	if db.Dialector.Name() == "postgres" {
-		return db.AutoMigrate(
-			&entity.User{},
-			&entity.Patient{},
-			&entity.Doctor{},
-			&entity.Wallet{},
-			&entity.Transaction{},
-			&entity.Appointment{},
-			&entity.Consultation{},
-			&entity.ConsultationMessage{},
-			&entity.MedicalRecord{},
-			&entity.Prescription{},
-			&entity.AIConversation{},
-			&entity.AIMessage{},
-			&entity.Emergency{},
-			&entity.EmergencyContact{},
-			&entity.MedicationReminder{},
-			&entity.ReminderLog{},
-			&entity.HealthSavingsGoal{},
-			&entity.Notification{},
-			&entity.Review{},
-		)
-	}
 	statements := []string{
 		// ─── USERS ──────────────────────────────────────────────────
 		`CREATE TABLE IF NOT EXISTS users (

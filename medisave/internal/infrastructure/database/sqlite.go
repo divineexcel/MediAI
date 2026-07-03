@@ -43,6 +43,12 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
+	}
+
 	// Each PRAGMA is critical for correctness and performance.
 	// Log a warning on failure rather than silently continuing.
 	type pragma struct {

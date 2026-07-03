@@ -88,7 +88,9 @@ var App *Config
 
 func Load() *Config {
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, reading from environment")
+		if err := godotenv.Load("medisave/.env"); err != nil {
+			log.Println("No .env file found, reading from environment")
+		}
 	}
 
 	App = &Config{

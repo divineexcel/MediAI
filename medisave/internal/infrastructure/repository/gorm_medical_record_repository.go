@@ -22,13 +22,20 @@ func NewGORMMedicalRecordRepository(db *gorm.DB) domainrepo.MedicalRecordReposit
 	return &GORMMedicalRecordRepository{db: db}
 }
 
+func (r *GORMMedicalRecordRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMMedicalRecordRepository) Create(ctx context.Context, rec *entity.MedicalRecord) error {
-	return r.db.WithContext(ctx).Create(rec).Error
+	return r.dbc(ctx).Create(rec).Error
 }
 
 func (r *GORMMedicalRecordRepository) FindByID(ctx context.Context, id uint) (*entity.MedicalRecord, error) {
 	var rec entity.MedicalRecord
-	err := r.db.WithContext(ctx).Preload("Patient.User").First(&rec, id).Error
+	err := r.dbc(ctx).Preload("Patient.User").First(&rec, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrRecordNotFound
 	}
@@ -39,7 +46,7 @@ func (r *GORMMedicalRecordRepository) ListByPatient(ctx context.Context, patient
 	var list []*entity.MedicalRecord
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.MedicalRecord{}).Where("patient_id = ?", patientID)
+	q := r.dbc(ctx).Model(&entity.MedicalRecord{}).Where("patient_id = ?", patientID)
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -48,11 +55,11 @@ func (r *GORMMedicalRecordRepository) ListByPatient(ctx context.Context, patient
 }
 
 func (r *GORMMedicalRecordRepository) Update(ctx context.Context, rec *entity.MedicalRecord) error {
-	return r.db.WithContext(ctx).Save(rec).Error
+	return r.dbc(ctx).Save(rec).Error
 }
 
 func (r *GORMMedicalRecordRepository) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&entity.MedicalRecord{}, id).Error
+	return r.dbc(ctx).Delete(&entity.MedicalRecord{}, id).Error
 }
 
 // ─── Prescription Repository ──────────────────────────────────────────────────
@@ -65,13 +72,20 @@ func NewGORMPrescriptionRepository(db *gorm.DB) domainrepo.PrescriptionRepositor
 	return &GORMPrescriptionRepository{db: db}
 }
 
+func (r *GORMPrescriptionRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMPrescriptionRepository) Create(ctx context.Context, p *entity.Prescription) error {
-	return r.db.WithContext(ctx).Create(p).Error
+	return r.dbc(ctx).Create(p).Error
 }
 
 func (r *GORMPrescriptionRepository) FindByID(ctx context.Context, id uint) (*entity.Prescription, error) {
 	var p entity.Prescription
-	err := r.db.WithContext(ctx).First(&p, id).Error
+	err := r.dbc(ctx).First(&p, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrNotFound
 	}
@@ -82,7 +96,7 @@ func (r *GORMPrescriptionRepository) ListByPatient(ctx context.Context, patientI
 	var list []*entity.Prescription
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.Prescription{}).Where("patient_id = ?", patientID)
+	q := r.dbc(ctx).Model(&entity.Prescription{}).Where("patient_id = ?", patientID)
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -92,14 +106,14 @@ func (r *GORMPrescriptionRepository) ListByPatient(ctx context.Context, patientI
 
 func (r *GORMPrescriptionRepository) ListByConsultation(ctx context.Context, consultationID uint) ([]*entity.Prescription, error) {
 	var list []*entity.Prescription
-	err := r.db.WithContext(ctx).
+	err := r.dbc(ctx).
 		Where("consultation_id = ?", consultationID).
 		Order("created_at ASC").Find(&list).Error
 	return list, err
 }
 
 func (r *GORMPrescriptionRepository) MarkFilled(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Model(&entity.Prescription{}).
 		Where("id = ?", id).
 		Update("is_filled", true).Error

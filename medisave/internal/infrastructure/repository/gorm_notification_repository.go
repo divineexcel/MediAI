@@ -21,13 +21,20 @@ func NewGORMNotificationRepository(db *gorm.DB) domainrepo.NotificationRepositor
 	return &GORMNotificationRepository{db: db}
 }
 
+func (r *GORMNotificationRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMNotificationRepository) Create(ctx context.Context, n *entity.Notification) error {
-	return r.db.WithContext(ctx).Create(n).Error
+	return r.dbc(ctx).Create(n).Error
 }
 
 func (r *GORMNotificationRepository) FindByID(ctx context.Context, id uint) (*entity.Notification, error) {
 	var n entity.Notification
-	err := r.db.WithContext(ctx).First(&n, id).Error
+	err := r.dbc(ctx).First(&n, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrNotFound
 	}
@@ -38,7 +45,7 @@ func (r *GORMNotificationRepository) ListByUser(ctx context.Context, userID uint
 	var items []*entity.Notification
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.Notification{}).Where("user_id = ?", userID)
+	q := r.dbc(ctx).Model(&entity.Notification{}).Where("user_id = ?", userID)
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -47,26 +54,26 @@ func (r *GORMNotificationRepository) ListByUser(ctx context.Context, userID uint
 }
 
 func (r *GORMNotificationRepository) MarkRead(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Model(&entity.Notification{}).
+	return r.dbc(ctx).Model(&entity.Notification{}).
 		Where("id = ?", id).Update("is_read", true).Error
 }
 
 func (r *GORMNotificationRepository) MarkAllRead(ctx context.Context, userID uint) error {
-	return r.db.WithContext(ctx).Model(&entity.Notification{}).
+	return r.dbc(ctx).Model(&entity.Notification{}).
 		Where("user_id = ? AND is_read = ?", userID, false).
 		Update("is_read", true).Error
 }
 
 func (r *GORMNotificationRepository) CountUnread(ctx context.Context, userID uint) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&entity.Notification{}).
+	err := r.dbc(ctx).Model(&entity.Notification{}).
 		Where("user_id = ? AND is_read = ?", userID, false).Count(&count).Error
 	return count, err
 }
 
 func (r *GORMNotificationRepository) MarkSent(ctx context.Context, id uint) error {
 	now := time.Now()
-	return r.db.WithContext(ctx).Model(&entity.Notification{}).
+	return r.dbc(ctx).Model(&entity.Notification{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{"is_sent": true, "sent_at": now}).Error
 }

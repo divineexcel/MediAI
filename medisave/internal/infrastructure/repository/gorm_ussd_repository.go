@@ -19,9 +19,16 @@ func NewGORMUSSDRepository(db *gorm.DB) domainrepo.USSDRepository {
 	return &GORMUSSDRepository{db: db}
 }
 
+func (r *GORMUSSDRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMUSSDRepository) FindBySessionID(ctx context.Context, sessionID string) (*entity.USSDSession, error) {
 	var s entity.USSDSession
-	err := r.db.WithContext(ctx).Where("session_id = ?", sessionID).First(&s).Error
+	err := r.dbc(ctx).Where("session_id = ?", sessionID).First(&s).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -30,13 +37,13 @@ func (r *GORMUSSDRepository) FindBySessionID(ctx context.Context, sessionID stri
 
 func (r *GORMUSSDRepository) Upsert(ctx context.Context, session *entity.USSDSession) error {
 	if session.ID == 0 {
-		return r.db.WithContext(ctx).Create(session).Error
+		return r.dbc(ctx).Create(session).Error
 	}
-	return r.db.WithContext(ctx).Save(session).Error
+	return r.dbc(ctx).Save(session).Error
 }
 
 func (r *GORMUSSDRepository) DeleteExpired(ctx context.Context) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Where("expires_at < ?", time.Now()).
 		Delete(&entity.USSDSession{}).Error
 }

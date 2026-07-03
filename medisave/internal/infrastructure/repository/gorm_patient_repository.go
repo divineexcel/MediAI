@@ -20,13 +20,20 @@ func NewGORMPatientRepository(db *gorm.DB) domainrepo.PatientRepository {
 	return &GORMPatientRepository{db: db}
 }
 
+func (r *GORMPatientRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMPatientRepository) Create(ctx context.Context, patient *entity.Patient) error {
-	return r.db.WithContext(ctx).Create(patient).Error
+	return r.dbc(ctx).Create(patient).Error
 }
 
 func (r *GORMPatientRepository) FindByID(ctx context.Context, id uint) (*entity.Patient, error) {
 	var patient entity.Patient
-	err := r.db.WithContext(ctx).Preload("User").First(&patient, id).Error
+	err := r.dbc(ctx).Preload("User").First(&patient, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrPatientNotFound
 	}
@@ -35,7 +42,7 @@ func (r *GORMPatientRepository) FindByID(ctx context.Context, id uint) (*entity.
 
 func (r *GORMPatientRepository) FindByUserID(ctx context.Context, userID uint) (*entity.Patient, error) {
 	var patient entity.Patient
-	err := r.db.WithContext(ctx).Preload("User").Where("user_id = ?", userID).First(&patient).Error
+	err := r.dbc(ctx).Preload("User").Where("user_id = ?", userID).First(&patient).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrPatientNotFound
 	}
@@ -43,14 +50,14 @@ func (r *GORMPatientRepository) FindByUserID(ctx context.Context, userID uint) (
 }
 
 func (r *GORMPatientRepository) Update(ctx context.Context, patient *entity.Patient) error {
-	return r.db.WithContext(ctx).Save(patient).Error
+	return r.dbc(ctx).Save(patient).Error
 }
 
 func (r *GORMPatientRepository) List(ctx context.Context, p pagination.Params) ([]*entity.Patient, int64, error) {
 	var patients []*entity.Patient
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.Patient{}).Preload("User")
+	q := r.dbc(ctx).Model(&entity.Patient{}).Preload("User")
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -59,7 +66,7 @@ func (r *GORMPatientRepository) List(ctx context.Context, p pagination.Params) (
 }
 
 func (r *GORMPatientRepository) UpdateHealthScore(ctx context.Context, patientID uint, score int) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Model(&entity.Patient{}).
 		Where("id = ?", patientID).
 		Update("health_score", score).Error
@@ -67,18 +74,18 @@ func (r *GORMPatientRepository) UpdateHealthScore(ctx context.Context, patientID
 
 func (r *GORMPatientRepository) CountAll(ctx context.Context) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&entity.Patient{}).Count(&count).Error
+	err := r.dbc(ctx).Model(&entity.Patient{}).Count(&count).Error
 	return count, err
 }
 
 func (r *GORMPatientRepository) FindByState(ctx context.Context, state string) ([]*entity.Patient, error) {
 	var patients []*entity.Patient
-	err := r.db.WithContext(ctx).Preload("User").Where("state = ?", state).Find(&patients).Error
+	err := r.dbc(ctx).Preload("User").Where("state = ?", state).Find(&patients).Error
 	return patients, err
 }
 
 func (r *GORMPatientRepository) FindAll(ctx context.Context) ([]*entity.Patient, error) {
 	var patients []*entity.Patient
-	err := r.db.WithContext(ctx).Preload("User").Find(&patients).Error
+	err := r.dbc(ctx).Preload("User").Find(&patients).Error
 	return patients, err
 }

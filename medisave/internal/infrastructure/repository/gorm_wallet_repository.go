@@ -5,10 +5,12 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
+	"go.uber.org/zap"
 
 	"github.com/medisave/app/internal/domain/entity"
 	domainrepo "github.com/medisave/app/internal/domain/repository"
 	pkgerrors "github.com/medisave/app/pkg/errors"
+	"github.com/medisave/app/pkg/logger"
 	"github.com/medisave/app/pkg/pagination"
 )
 
@@ -28,7 +30,11 @@ func (r *GORMWalletRepository) dbc(ctx context.Context) *gorm.DB {
 }
 
 func (r *GORMWalletRepository) Create(ctx context.Context, wallet *entity.Wallet) error {
-	return r.dbc(ctx).Create(wallet).Error
+	err := r.dbc(ctx).Create(wallet).Error
+	if err != nil {
+		logger.Error("GORMWalletRepository.Create failed", zap.Error(err), zap.Uint("user_id", wallet.UserID))
+	}
+	return err
 }
 
 func (r *GORMWalletRepository) FindByUserID(ctx context.Context, userID uint) (*entity.Wallet, error) {
@@ -50,17 +56,25 @@ func (r *GORMWalletRepository) FindByID(ctx context.Context, id uint) (*entity.W
 }
 
 func (r *GORMWalletRepository) UpdateBalance(ctx context.Context, walletID uint, amount float64) error {
-	return r.dbc(ctx).
+	err := r.dbc(ctx).
 		Model(&entity.Wallet{}).
 		Where("id = ?", walletID).
 		UpdateColumn("balance", gorm.Expr("balance + ?", amount)).Error
+	if err != nil {
+		logger.Error("GORMWalletRepository.UpdateBalance failed", zap.Error(err), zap.Uint("wallet_id", walletID), zap.Float64("amount", amount))
+	}
+	return err
 }
 
 func (r *GORMWalletRepository) UpdateEscrow(ctx context.Context, walletID uint, amount float64) error {
-	return r.dbc(ctx).
+	err := r.dbc(ctx).
 		Model(&entity.Wallet{}).
 		Where("id = ?", walletID).
 		UpdateColumn("escrow", gorm.Expr("escrow + ?", amount)).Error
+	if err != nil {
+		logger.Error("GORMWalletRepository.UpdateEscrow failed", zap.Error(err), zap.Uint("wallet_id", walletID), zap.Float64("amount", amount))
+	}
+	return err
 }
 
 // ─── Transaction Repository ───────────────────────────────────────────────────
@@ -81,7 +95,11 @@ func (r *GORMTransactionRepository) dbc(ctx context.Context) *gorm.DB {
 }
 
 func (r *GORMTransactionRepository) Create(ctx context.Context, tx *entity.Transaction) error {
-	return r.dbc(ctx).Create(tx).Error
+	err := r.dbc(ctx).Create(tx).Error
+	if err != nil {
+		logger.Error("GORMTransactionRepository.Create failed", zap.Error(err), zap.String("reference", tx.Reference))
+	}
+	return err
 }
 
 func (r *GORMTransactionRepository) FindByID(ctx context.Context, id uint) (*entity.Transaction, error) {
@@ -115,14 +133,22 @@ func (r *GORMTransactionRepository) ListByWalletID(ctx context.Context, walletID
 }
 
 func (r *GORMTransactionRepository) Update(ctx context.Context, tx *entity.Transaction) error {
-	return r.dbc(ctx).Save(tx).Error
+	err := r.dbc(ctx).Save(tx).Error
+	if err != nil {
+		logger.Error("GORMTransactionRepository.Update failed", zap.Error(err), zap.Uint("tx_id", tx.ID))
+	}
+	return err
 }
 
 func (r *GORMTransactionRepository) UpdateStatus(ctx context.Context, txID uint, status entity.TransactionStatus) error {
-	return r.dbc(ctx).
+	err := r.dbc(ctx).
 		Model(&entity.Transaction{}).
 		Where("id = ?", txID).
 		Update("status", status).Error
+	if err != nil {
+		logger.Error("GORMTransactionRepository.UpdateStatus failed", zap.Error(err), zap.Uint("tx_id", txID), zap.String("status", string(status)))
+	}
+	return err
 }
 
 func (r *GORMTransactionRepository) CountAll(ctx context.Context) (int64, error) {

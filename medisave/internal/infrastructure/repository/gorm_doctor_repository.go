@@ -20,13 +20,20 @@ func NewGORMDoctorRepository(db *gorm.DB) domainrepo.DoctorRepository {
 	return &GORMDoctorRepository{db: db}
 }
 
+func (r *GORMDoctorRepository) dbc(ctx context.Context) *gorm.DB {
+	if tx, ok := domainrepo.GetTransaction(ctx).(*gorm.DB); ok {
+		return tx.WithContext(ctx)
+	}
+	return r.db.WithContext(ctx)
+}
+
 func (r *GORMDoctorRepository) Create(ctx context.Context, doctor *entity.Doctor) error {
-	return r.db.WithContext(ctx).Create(doctor).Error
+	return r.dbc(ctx).Create(doctor).Error
 }
 
 func (r *GORMDoctorRepository) FindByID(ctx context.Context, id uint) (*entity.Doctor, error) {
 	var doctor entity.Doctor
-	err := r.db.WithContext(ctx).Preload("User").First(&doctor, id).Error
+	err := r.dbc(ctx).Preload("User").First(&doctor, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrDoctorNotFound
 	}
@@ -35,7 +42,7 @@ func (r *GORMDoctorRepository) FindByID(ctx context.Context, id uint) (*entity.D
 
 func (r *GORMDoctorRepository) FindByUserID(ctx context.Context, userID uint) (*entity.Doctor, error) {
 	var doctor entity.Doctor
-	err := r.db.WithContext(ctx).Preload("User").Where("user_id = ?", userID).First(&doctor).Error
+	err := r.dbc(ctx).Preload("User").Where("user_id = ?", userID).First(&doctor).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrDoctorNotFound
 	}
@@ -44,7 +51,7 @@ func (r *GORMDoctorRepository) FindByUserID(ctx context.Context, userID uint) (*
 
 func (r *GORMDoctorRepository) FindByLicenseNumber(ctx context.Context, license string) (*entity.Doctor, error) {
 	var doctor entity.Doctor
-	err := r.db.WithContext(ctx).Where("license_number = ?", license).First(&doctor).Error
+	err := r.dbc(ctx).Where("license_number = ?", license).First(&doctor).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, pkgerrors.ErrDoctorNotFound
 	}
@@ -52,14 +59,14 @@ func (r *GORMDoctorRepository) FindByLicenseNumber(ctx context.Context, license 
 }
 
 func (r *GORMDoctorRepository) Update(ctx context.Context, doctor *entity.Doctor) error {
-	return r.db.WithContext(ctx).Save(doctor).Error
+	return r.dbc(ctx).Save(doctor).Error
 }
 
 func (r *GORMDoctorRepository) List(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error) {
 	var doctors []*entity.Doctor
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.Doctor{}).
+	q := r.dbc(ctx).Model(&entity.Doctor{}).
 		Preload("User").
 		Where("status = ? AND users.is_active = ?", entity.DoctorStatusVerified, true).
 		Joins("JOIN users ON users.id = doctors.user_id")
@@ -75,7 +82,7 @@ func (r *GORMDoctorRepository) ListAvailable(ctx context.Context, specialty stri
 	var doctors []*entity.Doctor
 	var total int64
 
-	q := r.db.WithContext(ctx).Model(&entity.Doctor{}).
+	q := r.dbc(ctx).Model(&entity.Doctor{}).
 		Preload("User").
 		Joins("JOIN users ON users.id = doctors.user_id").
 		Where("doctors.status = ? AND doctors.is_available = ? AND users.is_active = ?",
@@ -93,21 +100,21 @@ func (r *GORMDoctorRepository) ListAvailable(ctx context.Context, specialty stri
 }
 
 func (r *GORMDoctorRepository) SetAvailability(ctx context.Context, doctorID uint, available bool) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Model(&entity.Doctor{}).
 		Where("id = ?", doctorID).
 		Update("is_available", available).Error
 }
 
 func (r *GORMDoctorRepository) UpdateStatus(ctx context.Context, doctorID uint, status entity.DoctorStatus) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Model(&entity.Doctor{}).
 		Where("id = ?", doctorID).
 		Update("status", status).Error
 }
 
 func (r *GORMDoctorRepository) UpdateRating(ctx context.Context, doctorID uint, rating float64, totalReviews int) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Model(&entity.Doctor{}).
 		Where("id = ?", doctorID).
 		Updates(map[string]interface{}{
@@ -117,7 +124,7 @@ func (r *GORMDoctorRepository) UpdateRating(ctx context.Context, doctorID uint, 
 }
 
 func (r *GORMDoctorRepository) IncrementConsultations(ctx context.Context, doctorID uint) error {
-	return r.db.WithContext(ctx).
+	return r.dbc(ctx).
 		Model(&entity.Doctor{}).
 		Where("id = ?", doctorID).
 		UpdateColumn("total_consultations", gorm.Expr("total_consultations + 1")).Error
@@ -125,18 +132,18 @@ func (r *GORMDoctorRepository) IncrementConsultations(ctx context.Context, docto
 
 func (r *GORMDoctorRepository) CountAll(ctx context.Context) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&entity.Doctor{}).Count(&count).Error
+	err := r.dbc(ctx).Model(&entity.Doctor{}).Count(&count).Error
 	return count, err
 }
 
 func (r *GORMDoctorRepository) CountPending(ctx context.Context) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).Model(&entity.Doctor{}).Where("status = ?", entity.DoctorStatusPending).Count(&count).Error
+	err := r.dbc(ctx).Model(&entity.Doctor{}).Where("status = ?", entity.DoctorStatusPending).Count(&count).Error
 	return count, err
 }
 
 func (r *GORMDoctorRepository) FindAll(ctx context.Context) ([]*entity.Doctor, error) {
 	var doctors []*entity.Doctor
-	err := r.db.WithContext(ctx).Preload("User").Find(&doctors).Error
+	err := r.dbc(ctx).Preload("User").Find(&doctors).Error
 	return doctors, err
 }

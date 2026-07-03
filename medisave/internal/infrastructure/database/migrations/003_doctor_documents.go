@@ -7,9 +7,6 @@ func migration003DoctorDocuments() Migration {
 		Version:     "003",
 		Description: "add document URL columns to doctors table",
 		Up: func(db *gorm.DB) error {
-			if db.Dialector.Name() == "postgres" {
-				return nil
-			}
 			if err := db.Exec(`ALTER TABLE doctors ADD COLUMN work_id_url TEXT NOT NULL DEFAULT ''`).Error; err != nil {
 				return err
 			}

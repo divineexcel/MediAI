@@ -18,6 +18,15 @@ import (
 // If the database was seeded with an older version of this file, the repair helpers
 // will bring the existing rows into the state the current code expects.
 func Run(db *gorm.DB) error {
+	var count int64
+	if err := db.Model(&entity.User{}).Count(&count).Error; err != nil {
+		return fmt.Errorf("check users existence: %w", err)
+	}
+	if count > 0 {
+		logger.Info("database already has data, skipping seeding")
+		return nil
+	}
+
 	logger.Info("running database seeder")
 
 	if err := seedAdmin(db); err != nil {

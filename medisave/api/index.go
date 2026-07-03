@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		// In Vercel, the only writable directory is /tmp.
 		// If DB_DRIVER is sqlite, map the path to /tmp/medisave.db to avoid read-only filesystem errors.
-		if cfg.Database.Driver == "sqlite" || cfg.Database.Driver == "" {
+		if (cfg.Database.Driver == "sqlite" || cfg.Database.Driver == "") && os.Getenv("VERCEL") == "1" {
 			cfg.Database.Path = "/tmp/medisave.db"
 		}
 
