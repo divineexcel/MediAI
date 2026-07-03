@@ -218,12 +218,14 @@ let _ended      = false;   // guard against double-fire of onCallEnded
   const user = JSON.parse(localStorage.getItem('ms_user') || '{}');
   _role = user.role || 'patient';
 
-  // ── 1. Fetch appointment for display names + type ──────────────────────────
+  // ── 1. Fetch appointment for display names, type, and current status ───────
+  let apptStatus = 'confirmed';
   try {
     const r = await api(`/api/v1/appointments/${_apptID}`);
     if (r.ok) {
       const { data } = await r.json();
-      _apptType = data?.type || 'video';
+      _apptType  = data?.type   || 'video';
+      apptStatus = data?.status || 'confirmed';
       if (_role === 'patient') {
         const d = data?.doctor?.user || {};
         _peerName = d.first_name ? `Dr. ${d.first_name} ${d.last_name}` : 'Your Doctor';
@@ -238,9 +240,46 @@ let _ended      = false;   // guard against double-fire of onCallEnded
     }
   } catch(_) {}
 
-  setWaiting('Verifying access…');
+  // Update button labels for chat type
+  if (_apptType === 'chat') {
+    const endBtn = document.getElementById('btn-end');
+    if (endBtn) endBtn.innerHTML = '<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg> End Chat';
+    const rejoin = document.getElementById('btn-rejoin');
+    if (rejoin) rejoin.textContent = 'Rejoin Chat';
+  }
 
-  // ── 2. Room-token check (authorises this user for this appointment) ─────────
+  // ── 2a. CHAT appointments — skip LiveKit entirely ─────────────────────────
+  //  Chat only uses the REST messaging API (/api/v1/consultations/{id}/messages).
+  //  No room token or Jitsi needed.
+  if (_apptType === 'chat') {
+    if (_role === 'patient' && apptStatus !== 'in_progress') {
+      // Doctor hasn't started yet — wait and poll
+      setWaiting('Waiting for the doctor to open the chat…');
+      const waitPoll = setInterval(async () => {
+        try {
+          const r = await api(`/api/v1/appointments/${_apptID}`);
+          if (!r.ok) return;
+          const { data } = await r.json();
+          if (data?.status === 'in_progress') {
+            clearInterval(waitPoll);
+            launchChat();
+            startStatusPolling();
+          } else if (data?.status === 'completed' || data?.status === 'cancelled') {
+            clearInterval(waitPoll);
+            showError('Appointment Ended', 'This appointment has been completed or cancelled.');
+          }
+        } catch(_) {}
+      }, 3000);
+      return;
+    }
+    // Doctor (always) or patient when already in_progress
+    launchChat();
+    startStatusPolling();
+    return;
+  }
+
+  // ── 2b. VOICE / VIDEO — get LiveKit room token ────────────────────────────
+  setWaiting('Verifying access…');
   let roomName;
   try {
     const r = await api(`/api/v1/appointments/${_apptID}/room-token`);
@@ -255,13 +294,9 @@ let _ended      = false;   // guard against double-fire of onCallEnded
     return;
   }
 
-  // ── 3. Launch ──────────────────────────────────────────────────────────────
+  // ── 3. Launch Jitsi for voice / video ─────────────────────────────────────
   setWaiting(`Waiting for ${_peerName}…`);
-  if (_apptType === 'chat') {
-    launchChat();
-  } else {
-    launchJitsi(roomName);
-  }
+  launchJitsi(roomName);
   startStatusPolling();
 })();
 

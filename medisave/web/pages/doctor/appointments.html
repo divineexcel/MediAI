@@ -43,11 +43,16 @@
       <div class="ring-wave-doc"></div>
       <div class="ring-wave-doc"></div>
       <div style="position:relative;z-index:2;width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#0F9D58,#34A853);display:flex;align-items:center;justify-content:center;animation:ring-pulse-doc 1.4s ease-in-out infinite;">
-        <!-- Phone/video icon -->
-        <svg width="30" height="30" fill="white" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        <!-- Chat icon for chat type, video icon otherwise -->
+        <template x-if="activeCallAppt?.type === 'chat'">
+          <svg width="30" height="30" fill="white" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        </template>
+        <template x-if="activeCallAppt?.type !== 'chat'">
+          <svg width="30" height="30" fill="white" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        </template>
       </div>
     </div>
-    <p style="color:#9CA3AF;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Patient is Waiting</p>
+    <p style="color:#9CA3AF;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;" x-text="activeCallAppt?.type === 'chat' ? 'Patient is waiting to chat' : 'Patient is Waiting'"></p>
     <p style="color:#fff;font-size:1.3rem;font-weight:800;margin-bottom:6px;" x-text="activeCallAppt ? patientName(activeCallAppt) : ''"></p>
     <p style="color:#6B7280;font-size:.85rem;margin-bottom:28px;" x-text="activeCallAppt ? (activeCallAppt.type==='chat'?'Chat Consultation':(activeCallAppt.type==='voice'?'Voice Call':'Video Call')) : ''"></p>
     <div style="display:flex;gap:16px;justify-content:center;">
@@ -60,7 +65,7 @@
         <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
       </button>
     </div>
-    <p style="color:#6B7280;font-size:.75rem;margin-top:18px;">Tap the green button to join the consultation</p>
+    <p style="color:#6B7280;font-size:.75rem;margin-top:18px;" x-text="activeCallAppt?.type === 'chat' ? 'Tap the green button to open the chat' : 'Tap the green button to join the consultation'"></p>
   </div>
 </div>
 
