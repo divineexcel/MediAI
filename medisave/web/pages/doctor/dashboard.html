@@ -115,7 +115,9 @@
         Dashboard
       </a>
 
-      <a href="/doctor/appointments" class="nav-item">
+      <a :href="dash?.doctor?.status === 'verified' ? '/doctor/appointments' : '#'"
+         :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+         class="nav-item">
         <span class="icon-wrap bg-blue-50">
           <svg class="w-[18px] h-[18px] text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
@@ -124,7 +126,9 @@
         Appointments
       </a>
 
-      <a href="/doctor/patients" class="nav-item">
+      <a :href="dash?.doctor?.status === 'verified' ? '/doctor/patients' : '#'"
+         :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+         class="nav-item">
         <span class="icon-wrap bg-violet-50">
           <svg class="w-[18px] h-[18px] text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -133,7 +137,9 @@
         My Patients
       </a>
 
-      <a href="/doctor/earnings" class="nav-item">
+      <a :href="dash?.doctor?.status === 'verified' ? '/doctor/earnings' : '#'"
+         :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+         class="nav-item">
         <span class="icon-wrap bg-emerald-50">
           <svg class="w-[18px] h-[18px] text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -163,11 +169,12 @@
           <p class="text-xs mt-0.5" :class="dash?.doctor?.is_available ? 'text-emerald-600' : 'text-gray-400'"
             x-text="dash?.doctor?.is_available ? 'Accepting patients' : 'Not accepting'"></p>
         </div>
-        <button @click="toggleAvailability()"
+        <button @click="dash?.doctor?.status === 'verified' ? toggleAvailability() : null"
+          :class="dash?.doctor?.status === 'verified' ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'"
           class="toggle-track"
-          :style="dash?.doctor?.is_available ? 'background:#0F9D58' : 'background:#D1D5DB'">
+          :style="dash?.doctor?.is_available && dash?.doctor?.status === 'verified' ? 'background:#0F9D58' : 'background:#D1D5DB'">
           <span class="toggle-thumb"
-            :style="dash?.doctor?.is_available ? 'transform:translateX(22px)' : 'transform:translateX(2px)'"></span>
+            :style="dash?.doctor?.is_available && dash?.doctor?.status === 'verified' ? 'transform:translateX(22px)' : 'transform:translateX(2px)'"></span>
         </button>
       </div>
     </div>
@@ -200,8 +207,47 @@
         <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
           <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
           <div>
-            <p class="text-sm font-bold text-amber-800">Account pending verification</p>
+            <p class="text-sm font-bold text-amber-800">Your account is under review.</p>
             <p class="text-xs text-amber-700 mt-0.5">Our team is reviewing your license. You'll be notified once verified — usually within 24 hours.</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- Verified notice -->
+      <template x-if="dash?.doctor?.status === 'verified'">
+        <div class="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
+          <svg class="w-5 h-5 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div>
+            <p class="text-sm font-bold text-green-800">Your account has been verified.</p>
+            <p class="text-xs text-green-700 mt-0.5">Congratulations! Your MediSave profile has been reviewed and approved. You can now start receiving appointments.</p>
+          </div>
+        </div>
+      </template>
+
+      <!-- Rejected notice -->
+      <template x-if="dash?.doctor?.status === 'rejected'">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <div>
+            <p class="text-sm font-bold text-red-800">Account verification rejected</p>
+            <p class="text-xs text-red-700 mt-0.5" x-text="dash?.doctor?.remarks ? 'Feedback: ' + dash.doctor.remarks : 'Your practice verification was not approved. Please update your details and resubmit documents.'"></p>
+          </div>
+        </div>
+      </template>
+
+      <!-- Suspended notice -->
+      <template x-if="dash?.doctor?.status === 'suspended'">
+        <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <div>
+            <p class="text-sm font-bold text-red-800">Account suspended</p>
+            <p class="text-xs text-red-700 mt-0.5" x-text="dash?.doctor?.remarks ? 'Reason: ' + dash.doctor.remarks : 'Your account has been suspended. Please contact support.'"></p>
           </div>
         </div>
       </template>
@@ -218,7 +264,7 @@
               x-text="user ? 'Dr. '+user.first_name+' '+user.last_name : '…'"></h2>
             <p class="text-green-100 text-sm mt-1.5"
               x-text="(dash?.doctor?.specialty||'Doctor') + (dash?.doctor?.hospital ? ' · '+dash.doctor.hospital : '')"></p>
-            <div class="flex items-center gap-3 mt-5">
+            <div class="flex items-center gap-3 mt-5" x-show="dash?.doctor?.status === 'verified'">
               <a href="/doctor/appointments" class="px-5 py-2.5 bg-white text-primary text-sm font-bold rounded-xl hover:shadow-lg transition">
                 Today's Schedule
               </a>
@@ -278,22 +324,49 @@
         <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Quick Access</h3>
         <div class="grid grid-cols-4 gap-4">
 
-          <a href="/doctor/appointments" class="feat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+          <a :href="dash?.doctor?.status === 'verified' ? '/doctor/appointments' : '#'"
+             :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+             class="feat-card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <span class="card-arrow">
+              <template x-if="dash?.doctor?.status === 'verified'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </template>
+              <template x-if="dash?.doctor?.status !== 'verified'">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+              </template>
+            </span>
             <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
             <p class="text-sm font-bold">Appointments</p>
             <p class="text-xs text-blue-100 mt-0.5">Schedule &amp; manage</p>
           </a>
 
-          <a href="/doctor/patients" class="feat-card bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
-            <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+          <a :href="dash?.doctor?.status === 'verified' ? '/doctor/patients' : '#'"
+             :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+             class="feat-card bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+            <span class="card-arrow">
+              <template x-if="dash?.doctor?.status === 'verified'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </template>
+              <template x-if="dash?.doctor?.status !== 'verified'">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+              </template>
+            </span>
+            <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 116 0z"/></svg></div>
             <p class="text-sm font-bold">My Patients</p>
             <p class="text-xs text-purple-200 mt-0.5">View history</p>
           </a>
 
-          <a href="/doctor/earnings" class="feat-card bg-gradient-to-br from-emerald-500 to-green-600 text-white">
-            <span class="card-arrow"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></span>
+          <a :href="dash?.doctor?.status === 'verified' ? '/doctor/earnings' : '#'"
+             :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+             class="feat-card bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+            <span class="card-arrow">
+              <template x-if="dash?.doctor?.status === 'verified'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </template>
+              <template x-if="dash?.doctor?.status !== 'verified'">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+              </template>
+            </span>
             <div class="card-icon"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
             <p class="text-sm font-bold">Earnings</p>
             <p class="text-xs text-green-100 mt-0.5">Wallet &amp; payouts</p>
@@ -470,7 +543,37 @@
     <template x-if="dash?.doctor?.status === 'pending'">
       <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
         <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-        <p class="text-xs text-amber-800 font-medium">Account pending verification — usually within 24 hours.</p>
+        <p class="text-xs text-amber-800 font-medium">Your account is under review. We'll verify it shortly.</p>
+      </div>
+    </template>
+
+    <!-- Verified notice -->
+    <template x-if="dash?.doctor?.status === 'verified'">
+      <div class="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
+        <svg class="w-4 h-4 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-xs text-green-800 font-medium">Your account has been verified.</p>
+      </div>
+    </template>
+
+    <!-- Rejected notice -->
+    <template x-if="dash?.doctor?.status === 'rejected'">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+        <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="text-xs text-red-800 font-medium" x-text="dash?.doctor?.remarks ? 'Verification Rejected: ' + dash.doctor.remarks : 'Your verification was not approved. Please review documents.'"></p>
+      </div>
+    </template>
+
+    <!-- Suspended notice -->
+    <template x-if="dash?.doctor?.status === 'suspended'">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+        <svg class="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <p class="text-xs text-red-800 font-medium" x-text="dash?.doctor?.remarks ? 'Suspended: ' + dash.doctor.remarks : 'Your account has been suspended. Contact support.'"></p>
       </div>
     </template>
 
@@ -485,7 +588,7 @@
             x-text="user ? 'Dr. '+user.first_name : 'Doctor'"></h2>
           <p class="text-green-100 text-xs mt-1"
             x-text="dash?.doctor?.specialty || 'Doctor'"></p>
-          <div class="flex gap-2 mt-4">
+          <div class="flex gap-2 mt-4" x-show="dash?.doctor?.status === 'verified'">
             <a href="/doctor/appointments" class="px-4 py-2 bg-white text-primary text-xs font-bold rounded-xl">Schedule</a>
             <a href="/doctor/patients" class="px-4 py-2 bg-white/20 text-white text-xs font-semibold rounded-xl">Patients</a>
           </div>
@@ -626,15 +729,21 @@
         <svg class="w-[22px] h-[22px] text-primary" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         <span class="text-[10px] font-bold mt-0.5 text-primary">Home</span>
       </a>
-      <a href="/doctor/appointments" class="bnav-btn">
+      <a :href="dash?.doctor?.status === 'verified' ? '/doctor/appointments' : '#'"
+         :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+         class="bnav-btn">
         <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Schedule</span>
       </a>
-      <a href="/doctor/patients" class="bnav-btn">
+      <a :href="dash?.doctor?.status === 'verified' ? '/doctor/patients' : '#'"
+         :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+         class="bnav-btn">
         <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Patients</span>
       </a>
-      <a href="/doctor/earnings" class="bnav-btn">
+      <a :href="dash?.doctor?.status === 'verified' ? '/doctor/earnings' : '#'"
+         :class="dash?.doctor?.status === 'verified' ? '' : 'opacity-40 pointer-events-none cursor-not-allowed'"
+         class="bnav-btn">
         <svg class="w-[22px] h-[22px] text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         <span class="text-[10px] font-semibold mt-0.5 text-gray-400">Earnings</span>
       </a>

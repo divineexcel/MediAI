@@ -12,7 +12,7 @@ type AdminAnalyticsResponse struct {
 }
 
 type VerifyDoctorRequest struct {
-	Status  string `json:"status"  validate:"required,oneof=verified suspended"`
+	Status  string `json:"status"  validate:"required,oneof=verified suspended rejected"`
 	Remarks string `json:"remarks" validate:"omitempty"`
 }
 

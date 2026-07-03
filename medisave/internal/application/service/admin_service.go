@@ -115,11 +115,15 @@ func (s *adminService) VerifyDoctor(ctx context.Context, doctorID uint, req *dto
 		status = entity.DoctorStatusVerified
 	case "suspended":
 		status = entity.DoctorStatusSuspended
+	case "rejected":
+		status = entity.DoctorStatusRejected
 	default:
 		return pkgerrors.ErrBadRequest
 	}
 
-	if err := s.doctorRepo.UpdateStatus(ctx, doctor.ID, status); err != nil {
+	doctor.Status = status
+	doctor.Remarks = req.Remarks
+	if err := s.doctorRepo.Update(ctx, doctor); err != nil {
 		return pkgerrors.ErrInternalServer
 	}
 
@@ -127,7 +131,13 @@ func (s *adminService) VerifyDoctor(ctx context.Context, doctorID uint, req *dto
 	var title, body string
 	if status == entity.DoctorStatusVerified {
 		title = "Profile Verified"
-		body = "Congratulations! Your MediSave doctor profile has been verified. You can now start receiving patient appointments."
+		body = "Congratulations! Your account has been verified. You can now begin accepting patient consultations."
+	} else if status == entity.DoctorStatusRejected {
+		title = "Profile Verification Rejected"
+		body = "Your verification was not approved. Please review the feedback and resubmit your documents."
+		if req.Remarks != "" {
+			body += " Feedback: " + req.Remarks
+		}
 	} else {
 		title = "Profile Suspended"
 		body = "Your MediSave doctor account has been suspended. Please contact support for details."

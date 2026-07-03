@@ -38,6 +38,7 @@ type DoctorProfileResponse struct {
 	ConsultationFee    float64             `json:"consultation_fee"`
 	IsAvailable        bool                `json:"is_available"`
 	Status             entity.DoctorStatus `json:"status"`
+	Remarks            string              `json:"remarks"`
 	Bio                string              `json:"bio"`
 	Education          string              `json:"education"`
 	Certifications     string              `json:"certifications"`

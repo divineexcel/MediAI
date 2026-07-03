@@ -19,6 +19,7 @@ import (
 	"github.com/medisave/app/internal/infrastructure/database/migrations"
 	repo "github.com/medisave/app/internal/infrastructure/repository"
 	pkgjwt "github.com/medisave/app/pkg/jwt"
+	"github.com/medisave/app/pkg/pagination"
 )
 
 func TestIntegration_DatabasePersistenceAndTransactions(t *testing.T) {
@@ -296,4 +297,135 @@ func TestIntegration_DoctorCancellation(t *testing.T) {
 	dWalletAfter, err := walletRepo.FindByUserID(ctx, dResp.User.ID)
 	require.NoError(t, err)
 	assert.Equal(t, 0.0, dWalletAfter.Balance)
+}
+
+func TestIntegration_DoctorVerificationAndRejectionWorkflow(t *testing.T) {
+	// Create a temp directory for the test database
+	tempDir, err := os.MkdirTemp("", "medisave-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "medisave_test.db")
+
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	defer sqlDB.Close()
+	db.Exec("PRAGMA foreign_keys=ON")
+
+	require.NoError(t, migrations.Run(db))
+
+	jwtManager := pkgjwt.NewManager("test-access-secret", "test-refresh-secret", 1, 7)
+	userRepo := repo.NewGORMUserRepository(db)
+	patientRepo := repo.NewGORMPatientRepository(db)
+	doctorRepo := repo.NewGORMDoctorRepository(db)
+	walletRepo := repo.NewGORMWalletRepository(db)
+	notifRepo := repo.NewGORMNotificationRepository(db)
+	txRepo := repo.NewGORMTransactionRepository(db)
+	apptRepo := repo.NewGORMAppointmentRepository(db)
+	emergencyRepo := repo.NewGORMEmergencyRepository(db)
+	campaignRepo := repo.NewGORMCampaignRepository(db)
+
+	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	adminSvc := service.NewAdminService(patientRepo, doctorRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, nil)
+	doctorSvc := service.NewDoctorService(doctorRepo, userRepo, walletRepo, notifRepo, apptRepo)
+
+	ctx := context.Background()
+
+	// 1. Register Doctor (starts as pending)
+	doctorReg := &dto.DoctorRegisterRequest{
+		RegisterRequest: dto.RegisterRequest{
+			FirstName: "Dave",
+			LastName:  "Reid",
+			Email:     "dave.reid@example.com",
+			Password:  "SecurePassword@123",
+			Phone:     "+2348055555555",
+			Role:      "doctor",
+		},
+		LicenseNumber:     "MD9999",
+		Specialty:         "Pediatrics",
+		YearsOfExperience: 8,
+		ConsultationFee:   6000.0,
+		Hospital:          "City Pediatrics",
+		WorkIDURL:         "http://example.com/workid.jpg",
+		MedicalLicenseURL: "http://example.com/license.jpg",
+	}
+	doctorResp, err := authSvc.RegisterDoctor(ctx, doctorReg)
+	require.NoError(t, err)
+
+	// Verify initial status is pending
+	docRecord, err := doctorRepo.FindByUserID(ctx, doctorResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.DoctorStatusPending, docRecord.Status)
+	assert.Empty(t, docRecord.Remarks)
+
+	// Trying to toggle availability when pending should fail
+	err = doctorSvc.ToggleAvailability(ctx, doctorResp.User.ID, true)
+	assert.Error(t, err)
+
+	// 2. Reject doctor via Admin Service
+	rejectReq := &dto.VerifyDoctorRequest{
+		Status:  "rejected",
+		Remarks: "Credentials do not match the public database. Please upload a valid license.",
+	}
+	err = adminSvc.VerifyDoctor(ctx, docRecord.ID, rejectReq)
+	require.NoError(t, err)
+
+	// Verify rejected status and remarks
+	docRecord, err = doctorRepo.FindByUserID(ctx, doctorResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.DoctorStatusRejected, docRecord.Status)
+	assert.Equal(t, "Credentials do not match the public database. Please upload a valid license.", docRecord.Remarks)
+
+	// Trying to toggle availability when rejected should fail
+	err = doctorSvc.ToggleAvailability(ctx, doctorResp.User.ID, true)
+	assert.Error(t, err)
+
+	// Verify notification generated
+	notifications, _, err := notifRepo.ListByUser(ctx, doctorResp.User.ID, pagination.Params{Page: 1, Limit: 10})
+	require.NoError(t, err)
+	require.Len(t, notifications, 1)
+	assert.Contains(t, notifications[0].Title, "Rejected")
+	assert.Contains(t, notifications[0].Body, "Feedback: Credentials do not match")
+
+	// 3. Approve doctor via Admin Service
+	approveReq := &dto.VerifyDoctorRequest{
+		Status: "verified",
+	}
+	err = adminSvc.VerifyDoctor(ctx, docRecord.ID, approveReq)
+	require.NoError(t, err)
+
+	// Verify verified status
+	docRecord, err = doctorRepo.FindByUserID(ctx, doctorResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.DoctorStatusVerified, docRecord.Status)
+
+	// Toggle availability should succeed now
+	err = doctorSvc.ToggleAvailability(ctx, doctorResp.User.ID, true)
+	require.NoError(t, err)
+
+	docRecord, err = doctorRepo.FindByUserID(ctx, doctorResp.User.ID)
+	require.NoError(t, err)
+	assert.True(t, docRecord.IsAvailable)
+
+	// 4. Suspend doctor via Admin Service
+	suspendReq := &dto.VerifyDoctorRequest{
+		Status:  "suspended",
+		Remarks: "Complaints of unprofessional conduct",
+	}
+	err = adminSvc.VerifyDoctor(ctx, docRecord.ID, suspendReq)
+	require.NoError(t, err)
+
+	// Verify suspended status and remarks
+	docRecord, err = doctorRepo.FindByUserID(ctx, doctorResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.DoctorStatusSuspended, docRecord.Status)
+	assert.Equal(t, "Complaints of unprofessional conduct", docRecord.Remarks)
+
+	// Toggle availability when suspended should fail
+	err = doctorSvc.ToggleAvailability(ctx, doctorResp.User.ID, true)
+	assert.Error(t, err)
 }

@@ -377,6 +377,10 @@ func (s *appointmentService) Start(ctx context.Context, userID uint, apptID uint
 		return pkgerrors.ErrForbidden
 	}
 
+	if appt.Doctor.UserID == userID && appt.Doctor.Status != entity.DoctorStatusVerified {
+		return pkgerrors.ErrDoctorNotVerified
+	}
+
 	if appt.Status != entity.AppointmentStatusPending && appt.Status != entity.AppointmentStatusConfirmed {
 		// Idempotency: if already in progress, return success
 		if appt.Status == entity.AppointmentStatusInProgress {
@@ -433,6 +437,10 @@ func (s *appointmentService) Complete(ctx context.Context, userID uint, apptID u
 	// Allow either the doctor or the patient of the appointment to complete it
 	if appt.Patient.UserID != userID && appt.Doctor.UserID != userID {
 		return pkgerrors.ErrForbidden
+	}
+
+	if appt.Doctor.UserID == userID && appt.Doctor.Status != entity.DoctorStatusVerified {
+		return pkgerrors.ErrDoctorNotVerified
 	}
 
 	// Idempotency: if already completed, return success
@@ -593,6 +601,9 @@ func (s *appointmentService) SaveNotes(ctx context.Context, userID uint, apptID 
 	if err != nil || doctor.ID != appt.DoctorID {
 		return nil, pkgerrors.ErrForbidden
 	}
+	if doctor.Status != entity.DoctorStatusVerified {
+		return nil, pkgerrors.ErrDoctorNotVerified
+	}
 
 	consult, err := s.consultRepo.FindByAppointmentID(ctx, apptID)
 	if err != nil {
@@ -630,6 +641,9 @@ func (s *appointmentService) AddPrescription(ctx context.Context, userID uint, a
 	doctor, err := s.doctorRepo.FindByUserID(ctx, userID)
 	if err != nil || doctor.ID != appt.DoctorID {
 		return nil, pkgerrors.ErrForbidden
+	}
+	if doctor.Status != entity.DoctorStatusVerified {
+		return nil, pkgerrors.ErrDoctorNotVerified
 	}
 
 	consult, err := s.consultRepo.FindByAppointmentID(ctx, apptID)

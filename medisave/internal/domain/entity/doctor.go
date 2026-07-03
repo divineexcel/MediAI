@@ -8,6 +8,7 @@ const (
 	DoctorStatusPending  DoctorStatus = "pending"
 	DoctorStatusVerified DoctorStatus = "verified"
 	DoctorStatusSuspended DoctorStatus = "suspended"
+	DoctorStatusRejected  DoctorStatus = "rejected"
 )
 
 type Doctor struct {
@@ -22,6 +23,7 @@ type Doctor struct {
 	ConsultationFee     float64      `gorm:"not null;default:0" json:"consultation_fee"`
 	IsAvailable         bool         `gorm:"default:false" json:"is_available"`
 	Status              DoctorStatus `gorm:"default:'pending'" json:"status"`
+	Remarks             string       `gorm:"default:''" json:"remarks"`
 	Bio                 string       `json:"bio"`
 	Education           string       `json:"education"`
 	Certifications      string       `json:"certifications"`

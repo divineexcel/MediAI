@@ -139,6 +139,9 @@ func (s *doctorService) ToggleAvailability(ctx context.Context, userID uint, ava
 	if err != nil {
 		return err
 	}
+	if doctor.Status != entity.DoctorStatusVerified {
+		return pkgerrors.ErrDoctorNotVerified
+	}
 	return s.doctorRepo.SetAvailability(ctx, doctor.ID, available)
 }
 
@@ -181,6 +184,7 @@ func buildDoctorProfileResponse(d *entity.Doctor) dto.DoctorProfileResponse {
 		ConsultationFee:    d.ConsultationFee,
 		IsAvailable:        d.IsAvailable,
 		Status:             d.Status,
+		Remarks:            d.Remarks,
 		Bio:                d.Bio,
 		Education:          d.Education,
 		Certifications:     d.Certifications,
