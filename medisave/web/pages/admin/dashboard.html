@@ -53,15 +53,13 @@
     @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen pb-20 lg:pb-0" x-data="adminApp()" x-init="init()">
+<body class="bg-gray-50 min-h-screen" x-data="adminApp()" x-init="init()">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     DESKTOP SIDEBAR (lg+)
-════════════════════════════════════════════════════════════════ -->
-<div class="hidden lg:flex h-screen overflow-hidden">
+<!-- Main responsive layout container -->
+<div class="flex h-screen overflow-hidden">
 
-  <!-- Sidebar -->
-  <aside class="flex flex-col w-64 bg-white border-r border-gray-100 shrink-0 h-screen">
+  <!-- Desktop Sidebar (lg+ only) -->
+  <aside class="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 shrink-0 h-screen sticky top-0">
     <!-- Brand -->
     <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
       <div class="w-9 h-9 bg-red-600 rounded-xl flex items-center justify-center shrink-0">
@@ -76,6 +74,7 @@
       </div>
     </div>
 
+    <!-- Nav -->
     <nav class="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
       <button @click="activeTab='overview'" :class="activeTab==='overview' ? 'sidebar-link active' : 'sidebar-link'">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -96,11 +95,11 @@
         Transactions
       </button>
       <button @click="activeTab='appointments'; loadAppointments()" :class="activeTab==='appointments' ? 'sidebar-link active' : 'sidebar-link'">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         Appointments
       </button>
       <button @click="activeTab='emergencies'; loadEmergencies()" :class="activeTab==='emergencies' ? 'sidebar-link active' : 'sidebar-link'">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
         Emergencies
         <span x-show="stats.active_emergencies > 0" x-text="stats.active_emergencies"
           class="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 animate-pulse"></span>
@@ -110,20 +109,22 @@
     <div class="px-4 pb-5 border-t border-gray-100 pt-4 space-y-2">
       <button @click="showCampaignModal=true"
         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition text-sm font-semibold">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
         Broadcast Campaign
       </button>
       <button @click="logout()"
         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition text-sm font-medium">
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         Logout
       </button>
     </div>
   </aside>
 
-  <!-- Desktop main -->
-  <main class="flex-1 overflow-y-auto">
-    <header class="sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+  <!-- Main responsive content area -->
+  <div class="flex-1 flex flex-col min-h-screen overflow-hidden">
+
+    <!-- Desktop Header (lg+ only) -->
+    <header class="hidden lg:flex sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
       <div>
         <h1 class="text-xl font-bold text-gray-900" x-text="tabLabel()"></h1>
         <p class="text-sm text-gray-400 mt-0.5">MediSave Platform Control</p>
@@ -137,400 +138,384 @@
         <div class="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-bold">A</div>
       </div>
     </header>
-    <div class="p-6">
-      <div x-html="''" class="tab-content" x-show="true">
-        <template x-if="true">
-          <div class="tab-content">
-            <!-- shared tab content rendered below -->
-            <div x-show="loading" class="flex justify-center py-16">
-              <svg class="w-8 h-8 text-primary spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-              </svg>
-            </div>
-            <!-- Desktop tab panels injected below via x-show -->
-          </div>
-        </template>
-      </div>
-      <!-- Tab panels (shared by mobile + desktop via x-show) -->
-      <div id="tab-panels"></div>
-    </div>
-  </main>
-</div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     MOBILE LAYOUT (< lg)
-════════════════════════════════════════════════════════════════ -->
-<div class="lg:hidden flex flex-col min-h-screen">
-
-  <!-- Mobile top bar -->
-  <header class="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center shrink-0">
-        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-        </svg>
-      </div>
-      <div>
-        <span class="font-bold text-gray-900 text-sm" x-text="tabLabel()"></span>
-        <span class="text-xs text-red-500 font-semibold block leading-none">Admin Panel</span>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <span x-show="stats.active_emergencies > 0"
-        class="flex items-center gap-1.5 bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
-        <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
-        <span x-text="stats.active_emergencies + ' SOS'"></span>
-      </span>
-      <button @click="showCampaignModal=true"
-        class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
-        </svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- Mobile scrollable content -->
-  <div class="flex-1 overflow-y-auto px-4 pt-4 pb-2">
-
-    <!-- Loading -->
-    <div x-show="loading" class="flex justify-center py-12">
-      <svg class="w-7 h-7 text-primary spin" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-      </svg>
-    </div>
-
-    <!-- ── OVERVIEW ──────────────────────────────────────────── -->
-    <div x-show="activeTab==='overview'" class="tab-content space-y-4">
-      <!-- Stats 2×3 grid on mobile -->
-      <div class="grid grid-cols-2 gap-3">
-        <div class="stat-card">
-          <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Patients</p>
-          <p class="text-2xl font-bold text-gray-900 mt-1" x-text="stats.total_patients ?? '—'"></p>
-          <p class="text-xs text-primary font-medium mt-0.5">Registered</p>
+    <!-- Mobile Top Bar (< lg only) -->
+    <header class="lg:hidden sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
         </div>
-        <div class="stat-card">
-          <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Doctors</p>
-          <div class="flex items-end gap-1.5 mt-1">
-            <p class="text-2xl font-bold text-gray-900" x-text="stats.total_doctors ?? '—'"></p>
-            <span x-show="stats.pending_doctors > 0"
-              class="badge badge-pending mb-0.5 text-xs" x-text="stats.pending_doctors + ' pending'"></span>
-          </div>
-          <p class="text-xs text-gray-400 mt-0.5">Verified</p>
-        </div>
-        <div class="stat-card">
-          <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Appointments</p>
-          <p class="text-2xl font-bold text-gray-900 mt-1" x-text="stats.total_appointments ?? '—'"></p>
-          <p class="text-xs text-gray-400 mt-0.5">All time</p>
-        </div>
-        <div class="stat-card">
-          <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Revenue</p>
-          <p class="text-xl font-bold text-gray-900 mt-1" x-text="'₦' + fmtAmount(stats.total_volume)"></p>
-          <p class="text-xs text-primary font-medium mt-0.5">Completed</p>
-        </div>
-        <div class="stat-card col-span-2" :class="stats.active_emergencies > 0 ? 'border-red-200 bg-red-50' : ''">
-          <div class="flex items-center justify-between">
-            <p class="text-xs font-medium uppercase tracking-wide" :class="stats.active_emergencies > 0 ? 'text-red-500' : 'text-gray-400'">Active Emergencies</p>
-            <span x-show="stats.active_emergencies > 0" class="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block"></span>
-          </div>
-          <p class="text-2xl font-bold mt-1" :class="stats.active_emergencies > 0 ? 'text-red-600' : 'text-gray-900'"
-            x-text="stats.active_emergencies ?? 0"></p>
-          <p class="text-xs mt-0.5" :class="stats.active_emergencies > 0 ? 'text-red-500' : 'text-gray-400'">Live SOS alerts</p>
+        <div>
+          <span class="font-bold text-gray-900 text-sm" x-text="tabLabel()"></span>
+          <span class="text-xs text-red-500 font-semibold block leading-none">Admin Panel</span>
         </div>
       </div>
-
-      <!-- Quick doctor pending section -->
-      <div x-show="stats.pending_doctors > 0">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-bold text-gray-900">Pending Verifications</h2>
-          <button @click="activeTab='doctors'; loadDoctors()" class="text-xs text-primary font-semibold">See all</button>
-        </div>
-        <template x-for="d in pendingDoctors" :key="d.id">
-          <div class="data-card">
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-900 text-sm" x-text="'Dr. ' + (d.user?.first_name ?? '') + ' ' + (d.user?.last_name ?? '')"></p>
-                <p class="text-xs text-gray-500 mt-0.5" x-text="d.specialty"></p>
-                <p class="text-xs text-gray-400 font-mono mt-0.5" x-text="d.license_number"></p>
-              </div>
-              <span class="badge badge-pending shrink-0">pending</span>
-            </div>
-            <div class="flex gap-2 mt-3">
-              <button @click="verifyDoctor(d.id, 'verified')"
-                class="flex-1 py-2 rounded-xl bg-green-50 text-green-700 text-xs font-bold hover:bg-green-100 transition">
-                ✓ Verify
-              </button>
-              <button @click="verifyDoctor(d.id, 'suspended')"
-                class="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition">
-                ✕ Suspend
-              </button>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-
-    <!-- ── PATIENTS ──────────────────────────────────────────── -->
-    <div x-show="activeTab==='patients'" class="tab-content space-y-3">
-      <div class="flex items-center justify-between mb-1">
-        <p class="text-xs text-gray-400"><span x-text="patientsMeta.total ?? 0"></span> total patients</p>
-        <button @click="loadPatients()" class="text-xs text-primary font-semibold">Refresh</button>
-      </div>
-      <template x-for="p in patients" :key="p.id">
-        <div class="data-card">
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <p class="font-semibold text-gray-900 text-sm" x-text="(p.user?.first_name ?? '') + ' ' + (p.user?.last_name ?? '')"></p>
-              <p class="text-xs text-gray-500 mt-0.5" x-text="p.user?.email ?? '—'"></p>
-              <p class="text-xs text-gray-400 mt-0.5" x-text="p.user?.phone ?? '—'"></p>
-            </div>
-            <div class="text-right shrink-0">
-              <span class="badge bg-blue-50 text-blue-700" x-text="p.blood_type || '—'"></span>
-              <p class="text-xs text-gray-400 mt-1" x-text="fmtDate(p.created_at)"></p>
-            </div>
-          </div>
-        </div>
-      </template>
-      <div x-show="patients.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No patients found</div>
-      <div class="flex justify-between items-center pt-2">
-        <button @click="patientsPage > 1 && (patientsPage--, loadPatients())" :disabled="patientsPage <= 1"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
-        <span class="text-xs text-gray-400" x-text="'Page ' + patientsPage + ' / ' + patientsTotalPages"></span>
-        <button @click="patientsPage < patientsTotalPages && (patientsPage++, loadPatients())" :disabled="patientsPage >= patientsTotalPages"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
-      </div>
-    </div>
-
-    <!-- ── DOCTORS ───────────────────────────────────────────── -->
-    <div x-show="activeTab==='doctors'" class="tab-content space-y-3">
-      <div class="flex items-center justify-between mb-1">
-        <p class="text-xs text-gray-400"><span x-text="doctorsMeta.total ?? 0"></span> total doctors</p>
-        <button @click="loadDoctors()" class="text-xs text-primary font-semibold">Refresh</button>
-      </div>
-      <template x-for="d in doctors" :key="d.id">
-        <div class="data-card">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-gray-900 text-sm" x-text="'Dr. ' + (d.user?.first_name ?? '') + ' ' + (d.user?.last_name ?? '')"></p>
-              <p class="text-xs text-gray-500 mt-0.5" x-text="d.specialty"></p>
-              <p class="text-xs text-gray-400 font-mono mt-0.5" x-text="d.license_number"></p>
-              <div class="flex items-center gap-1 mt-1">
-                <svg class="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                <span class="text-xs text-gray-600" x-text="(d.rating ?? 0).toFixed(1)"></span>
-              </div>
-            </div>
-            <div class="shrink-0 text-right">
-              <span :class="{
-                'badge badge-pending':   d.status==='pending',
-                'badge badge-verified':  d.status==='verified',
-                'badge badge-suspended': d.status==='suspended'
-              }" x-text="d.status"></span>
-            </div>
-          </div>
-          <div class="flex gap-2 mt-3">
-            <button x-show="d.status !== 'verified'" @click="verifyDoctor(d.id, 'verified')"
-              class="flex-1 py-2 rounded-xl bg-green-50 text-green-700 text-xs font-bold hover:bg-green-100 transition">
-              ✓ Verify
-            </button>
-            <button x-show="d.status !== 'suspended'" @click="verifyDoctor(d.id, 'suspended')"
-              class="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition">
-              ✕ Suspend
-            </button>
-          </div>
-        </div>
-      </template>
-      <div x-show="doctors.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No doctors found</div>
-      <div class="flex justify-between items-center pt-2">
-        <button @click="doctorsPage > 1 && (doctorsPage--, loadDoctors())" :disabled="doctorsPage <= 1"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
-        <span class="text-xs text-gray-400" x-text="'Page ' + doctorsPage + ' / ' + doctorsTotalPages"></span>
-        <button @click="doctorsPage < doctorsTotalPages && (doctorsPage++, loadDoctors())" :disabled="doctorsPage >= doctorsTotalPages"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
-      </div>
-    </div>
-
-    <!-- ── TRANSACTIONS ──────────────────────────────────────── -->
-    <div x-show="activeTab==='transactions'" class="tab-content space-y-3">
-      <div class="flex items-center justify-between mb-1">
-        <p class="text-xs text-gray-400">Transaction history</p>
-        <button @click="loadTransactions()" class="text-xs text-primary font-semibold">Refresh</button>
-      </div>
-      <template x-for="tx in transactions" :key="tx.id">
-        <div class="data-card">
-          <div class="flex items-center justify-between">
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-mono text-gray-400 truncate" x-text="tx.reference?.substring(0,24) + '…'"></p>
-              <div class="flex items-center gap-2 mt-1.5">
-                <span :class="{
-                  'badge bg-blue-50 text-blue-700':     tx.type==='deposit',
-                  'badge bg-orange-50 text-orange-700': tx.type==='appointment_payment',
-                  'badge bg-purple-50 text-purple-700': tx.type==='savings_deposit',
-                  'badge bg-gray-100 text-gray-600':    !['deposit','appointment_payment','savings_deposit'].includes(tx.type)
-                }" x-text="tx.type?.replace(/_/g,' ')"></span>
-                <span :class="{
-                  'badge bg-green-100 text-green-700':  tx.status==='completed',
-                  'badge bg-yellow-100 text-yellow-700':tx.status==='pending',
-                  'badge bg-red-100 text-red-600':      tx.status==='failed'
-                }" x-text="tx.status"></span>
-              </div>
-            </div>
-            <div class="text-right shrink-0 ml-3">
-              <p class="font-bold text-base" :class="tx.type==='deposit' ? 'text-green-600' : 'text-gray-900'"
-                x-text="'₦' + fmtAmount(tx.amount)"></p>
-              <p class="text-xs text-gray-400 mt-0.5" x-text="fmtDate(tx.created_at)"></p>
-            </div>
-          </div>
-        </div>
-      </template>
-      <div x-show="transactions.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No transactions</div>
-      <div class="flex justify-between items-center pt-2">
-        <button @click="txPage > 1 && (txPage--, loadTransactions())" :disabled="txPage <= 1"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
-        <span class="text-xs text-gray-400" x-text="'Page ' + txPage + ' / ' + txTotalPages"></span>
-        <button @click="txPage < txTotalPages && (txPage++, loadTransactions())" :disabled="txPage >= txTotalPages"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
-      </div>
-    </div>
-
-    <!-- ── APPOINTMENTS ──────────────────────────────────────── -->
-    <div x-show="activeTab==='appointments'" class="tab-content space-y-3">
-      <div class="flex items-center justify-between mb-1">
-        <p class="text-xs text-gray-400">All appointments</p>
-        <button @click="loadAppointments()" class="text-xs text-primary font-semibold">Refresh</button>
-      </div>
-      <template x-for="a in appointments" :key="a.id">
-        <div class="data-card">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex-1 min-w-0">
-              <p class="font-semibold text-gray-900 text-sm"
-                x-text="(a.patient?.user?.first_name ?? '') + ' ' + (a.patient?.user?.last_name ?? '')"></p>
-              <p class="text-xs text-gray-500 mt-0.5"
-                x-text="'Dr. ' + (a.doctor?.user?.first_name ?? '') + ' ' + (a.doctor?.user?.last_name ?? '')"></p>
-              <p class="text-xs text-gray-400 mt-0.5" x-text="fmtDate(a.scheduled_at)"></p>
-            </div>
-            <div class="shrink-0 text-right">
-              <span :class="{
-                'badge bg-green-100 text-green-700':   a.status==='completed',
-                'badge bg-blue-100 text-blue-700':     a.status==='confirmed',
-                'badge badge-pending':                  a.status==='pending',
-                'badge bg-red-100 text-red-600':       a.status==='cancelled',
-                'badge bg-purple-100 text-purple-700': a.status==='in_progress'
-              }" x-text="a.status?.replace(/_/g,' ')"></span>
-              <p class="text-sm font-bold text-gray-900 mt-1" x-text="'₦' + fmtAmount(a.consultation_fee)"></p>
-            </div>
-          </div>
-        </div>
-      </template>
-      <div x-show="appointments.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No appointments</div>
-      <div class="flex justify-between items-center pt-2">
-        <button @click="apptPage > 1 && (apptPage--, loadAppointments())" :disabled="apptPage <= 1"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
-        <span class="text-xs text-gray-400" x-text="'Page ' + apptPage + ' / ' + apptTotalPages"></span>
-        <button @click="apptPage < apptTotalPages && (apptPage++, loadAppointments())" :disabled="apptPage >= apptTotalPages"
-          class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
-      </div>
-    </div>
-
-    <!-- ── EMERGENCIES ───────────────────────────────────────── -->
-    <div x-show="activeTab==='emergencies'" class="tab-content space-y-3">
-      <div class="flex items-center justify-between mb-1">
-        <p class="text-xs text-gray-400">Active emergencies</p>
-        <button @click="loadEmergencies()" class="text-xs text-primary font-semibold">Refresh</button>
-      </div>
-      <template x-for="e in emergencies" :key="e.id">
-        <div class="data-card" :class="e.status==='active' ? 'border-red-200 bg-red-50/40' : ''">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-              :class="e.status==='active' ? 'bg-red-100' : 'bg-gray-100'">
-              <svg class="w-5 h-5" :class="e.status==='active' ? 'text-red-600' : 'text-gray-500'"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-semibold text-sm text-gray-900"
-                  x-text="(e.patient?.user?.first_name ?? 'Unknown') + ' ' + (e.patient?.user?.last_name ?? '')"></span>
-                <span :class="e.status==='active' ? 'badge badge-active' : 'badge badge-resolved'" x-text="e.status"></span>
-              </div>
-              <p class="text-xs text-gray-600 mt-0.5" x-text="e.location_address || 'Location unavailable'"></p>
-              <p class="text-xs text-gray-400 mt-0.5" x-text="fmtDate(e.created_at)"></p>
-              <p class="text-xs font-mono text-gray-400 mt-0.5"
-                x-text="(e.latitude?.toFixed(4) ?? '—') + ', ' + (e.longitude?.toFixed(4) ?? '—')"></p>
-            </div>
-          </div>
-        </div>
-      </template>
-      <div x-show="emergencies.length === 0 && !loading" class="text-center py-12 text-gray-400">
-        <svg class="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <p class="text-sm">No active emergencies</p>
-      </div>
-    </div>
-
-  </div><!-- /scrollable -->
-
-  <!-- ── MOBILE BOTTOM TAB BAR ────────────────────────────────── -->
-  <nav class="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 flex items-stretch"
-    style="padding-bottom: env(safe-area-inset-bottom);">
-    <button class="tab-btn" :class="activeTab==='overview' ? 'active' : ''" @click="activeTab='overview'">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-      </svg>
-      Home
-    </button>
-    <button class="tab-btn" :class="activeTab==='patients' ? 'active' : ''" @click="activeTab='patients'; loadPatients()">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-      </svg>
-      Patients
-    </button>
-    <button class="tab-btn relative" :class="activeTab==='doctors' ? 'active' : ''" @click="activeTab='doctors'; loadDoctors()">
-      <div class="relative">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        <span x-show="stats.pending_doctors > 0"
-          class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full text-yellow-900 text-xs font-bold flex items-center justify-center"
-          x-text="stats.pending_doctors > 9 ? '9+' : stats.pending_doctors"></span>
-      </div>
-      Doctors
-    </button>
-    <button class="tab-btn" :class="activeTab==='transactions' ? 'active' : ''" @click="activeTab='transactions'; loadTransactions()">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-      </svg>
-      Txns
-    </button>
-    <button class="tab-btn relative" :class="activeTab==='emergencies' ? 'active' : ''" @click="activeTab='emergencies'; loadEmergencies()">
-      <div class="relative">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        </svg>
+      <div class="flex items-center gap-2">
         <span x-show="stats.active_emergencies > 0"
-          class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse"
-          x-text="stats.active_emergencies > 9 ? '9+' : stats.active_emergencies"></span>
+          class="flex items-center gap-1.5 bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+          <span x-text="stats.active_emergencies + ' SOS'"></span>
+        </span>
+        <button @click="showCampaignModal=true"
+          class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/>
+          </svg>
+        </button>
       </div>
-      SOS
-    </button>
-  </nav>
+    </header>
 
-</div><!-- /lg:hidden -->
+    <!-- Scrollable content area (Shared by desktop & mobile) -->
+    <main class="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 lg:pb-6">
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SHARED: DESKTOP TAB CONTENT (inside desktop main)
-     We duplicate panels for desktop because the layout differs
-     (desktop: inside .hidden.lg:flex > main, mobile: in its own div)
-     We keep desktop content in a hidden-on-mobile wrapper below.
-════════════════════════════════════════════════════════════════ -->
-<!-- Desktop tab panels are rendered inside the main element above via script below -->
+      <!-- Loading Spinner -->
+      <div x-show="loading" class="flex justify-center py-16">
+        <svg class="w-8 h-8 text-primary spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+        </svg>
+      </div>
+
+      <!-- Tab Content Panels (Shared) -->
+      <div x-show="!loading" class="space-y-6">
+
+        <!-- ── OVERVIEW ──────────────────────────────────────────── -->
+        <div x-show="activeTab==='overview'" class="tab-content space-y-6">
+          <!-- Stats responsive grid -->
+          <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
+            <div class="stat-card">
+              <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Patients</p>
+              <p class="text-2xl font-bold text-gray-900 mt-1" x-text="stats.total_patients ?? '—'"></p>
+              <p class="text-xs text-primary font-medium mt-0.5">Registered</p>
+            </div>
+            <div class="stat-card">
+              <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Doctors</p>
+              <div class="flex items-end gap-1.5 mt-1">
+                <p class="text-2xl font-bold text-gray-900" x-text="stats.total_doctors ?? '—'"></p>
+                <span x-show="stats.pending_doctors > 0"
+                  class="badge badge-pending mb-0.5 text-xs" x-text="stats.pending_doctors + ' pending'"></span>
+              </div>
+              <p class="text-xs text-gray-400 mt-0.5">Verified</p>
+            </div>
+            <div class="stat-card">
+              <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Appointments</p>
+              <p class="text-2xl font-bold text-gray-900 mt-1" x-text="stats.total_appointments ?? '—'"></p>
+              <p class="text-xs text-gray-400 mt-0.5">All time</p>
+            </div>
+            <div class="stat-card">
+              <p class="text-xs text-gray-400 font-medium uppercase tracking-wide">Revenue</p>
+              <p class="text-xl font-bold text-gray-900 mt-1" x-text="'₦' + fmtAmount(stats.total_volume)"></p>
+              <p class="text-xs text-primary font-medium mt-0.5">Completed</p>
+            </div>
+            <div class="stat-card col-span-2 lg:col-span-1" :class="stats.active_emergencies > 0 ? 'border-red-200 bg-red-50' : ''">
+              <div class="flex items-center justify-between">
+                <p class="text-xs font-medium uppercase tracking-wide" :class="stats.active_emergencies > 0 ? 'text-red-500' : 'text-gray-400'">Active Emergencies</p>
+                <span x-show="stats.active_emergencies > 0" class="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block"></span>
+              </div>
+              <p class="text-2xl font-bold mt-1" :class="stats.active_emergencies > 0 ? 'text-red-600' : 'text-gray-900'"
+                x-text="stats.active_emergencies ?? 0"></p>
+              <p class="text-xs mt-0.5" :class="stats.active_emergencies > 0 ? 'text-red-500' : 'text-gray-400'">Live SOS alerts</p>
+            </div>
+          </div>
+
+          <!-- Quick doctor pending section -->
+          <div x-show="stats.pending_doctors > 0" class="mt-6">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-sm font-bold text-gray-900">Pending Verifications</h2>
+              <button @click="activeTab='doctors'; loadDoctors()" class="text-xs text-primary font-semibold">See all</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <template x-for="d in pendingDoctors" :key="d.id">
+                <div class="data-card mb-0">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                      <p class="font-semibold text-gray-900 text-sm" x-text="'Dr. ' + (d.user?.first_name ?? '') + ' ' + (d.user?.last_name ?? '')"></p>
+                      <p class="text-xs text-gray-500 mt-0.5" x-text="d.specialty"></p>
+                      <p class="text-xs text-gray-400 font-mono mt-0.5" x-text="d.license_number"></p>
+                    </div>
+                    <span class="badge badge-pending shrink-0">pending</span>
+                  </div>
+                  <div class="flex gap-2 mt-3">
+                    <button @click="verifyDoctor(d.id, 'verified')"
+                      class="flex-1 py-2 rounded-xl bg-green-50 text-green-700 text-xs font-bold hover:bg-green-100 transition">
+                      ✓ Verify
+                    </button>
+                    <button @click="verifyDoctor(d.id, 'suspended')"
+                      class="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition">
+                      ✕ Suspend
+                    </button>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PATIENTS ──────────────────────────────────────────── -->
+        <div x-show="activeTab==='patients'" class="tab-content space-y-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-gray-400"><span x-text="patientsMeta.total ?? 0"></span> total patients</p>
+            <button @click="loadPatients()" class="text-xs text-primary font-semibold">Refresh</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="p in patients" :key="p.id">
+              <div class="data-card mb-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <p class="font-semibold text-gray-900 text-sm" x-text="(p.user?.first_name ?? '') + ' ' + (p.user?.last_name ?? '')"></p>
+                    <p class="text-xs text-gray-500 mt-0.5" x-text="p.user?.email ?? '—'"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="p.user?.phone ?? '—'"></p>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="badge bg-blue-50 text-blue-700" x-text="p.blood_type || '—'"></span>
+                    <p class="text-xs text-gray-400 mt-1" x-text="fmtDate(p.created_at)"></p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="patients.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No patients found</div>
+          <div class="flex justify-between items-center pt-2">
+            <button @click="patientsPage > 1 && (patientsPage--, loadPatients())" :disabled="patientsPage <= 1"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
+            <span class="text-xs text-gray-400" x-text="'Page ' + patientsPage + ' / ' + patientsTotalPages"></span>
+            <button @click="patientsPage < patientsTotalPages && (patientsPage++, loadPatients())" :disabled="patientsPage >= patientsTotalPages"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
+          </div>
+        </div>
+
+        <!-- ── DOCTORS ───────────────────────────────────────────── -->
+        <div x-show="activeTab==='doctors'" class="tab-content space-y-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-gray-400"><span x-text="doctorsMeta.total ?? 0"></span> total doctors</p>
+            <button @click="loadDoctors()" class="text-xs text-primary font-semibold">Refresh</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="d in doctors" :key="d.id">
+              <div class="data-card mb-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-gray-900 text-sm" x-text="'Dr. ' + (d.user?.first_name ?? '') + ' ' + (d.user?.last_name ?? '')"></p>
+                    <p class="text-xs text-gray-500 mt-0.5" x-text="d.specialty"></p>
+                    <p class="text-xs text-gray-400 font-mono mt-0.5" x-text="d.license_number"></p>
+                    <div class="flex items-center gap-1 mt-1">
+                      <svg class="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                      <span class="text-xs text-gray-600" x-text="(d.rating ?? 0).toFixed(1)"></span>
+                    </div>
+                  </div>
+                  <div class="shrink-0 text-right">
+                    <span :class="{
+                      'badge badge-pending':   d.status==='pending',
+                      'badge badge-verified':  d.status==='verified',
+                      'badge badge-suspended': d.status==='suspended'
+                    }" x-text="d.status"></span>
+                  </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <button x-show="d.status !== 'verified'" @click="verifyDoctor(d.id, 'verified')"
+                    class="flex-1 py-2 rounded-xl bg-green-50 text-green-700 text-xs font-bold hover:bg-green-100 transition">
+                    ✓ Verify
+                  </button>
+                  <button x-show="d.status !== 'suspended'" @click="verifyDoctor(d.id, 'suspended')"
+                    class="flex-1 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition">
+                    ✕ Suspend
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="doctors.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No doctors found</div>
+          <div class="flex justify-between items-center pt-2">
+            <button @click="doctorsPage > 1 && (doctorsPage--, loadDoctors())" :disabled="doctorsPage <= 1"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
+            <span class="text-xs text-gray-400" x-text="'Page ' + doctorsPage + ' / ' + doctorsTotalPages"></span>
+            <button @click="doctorsPage < doctorsTotalPages && (doctorsPage++, loadDoctors())" :disabled="doctorsPage >= doctorsTotalPages"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
+          </div>
+        </div>
+
+        <!-- ── TRANSACTIONS ──────────────────────────────────────── -->
+        <div x-show="activeTab==='transactions'" class="tab-content space-y-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-gray-400">Transaction history</p>
+            <button @click="loadTransactions()" class="text-xs text-primary font-semibold">Refresh</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="tx in transactions" :key="tx.id">
+              <div class="data-card mb-0">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-mono text-gray-400 truncate" x-text="tx.reference?.substring(0,24) + '…'"></p>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <span :class="{
+                        'badge bg-blue-50 text-blue-700':     tx.type==='deposit',
+                        'badge bg-orange-50 text-orange-700': tx.type==='appointment_payment',
+                        'badge bg-purple-50 text-purple-700': tx.type==='savings_deposit',
+                        'badge bg-gray-100 text-gray-600':    !['deposit','appointment_payment','savings_deposit'].includes(tx.type)
+                      }" x-text="tx.type?.replace(/_/g,' ')"></span>
+                      <span :class="{
+                        'badge bg-green-100 text-green-700':  tx.status==='completed',
+                        'badge bg-yellow-100 text-yellow-700':tx.status==='pending',
+                        'badge bg-red-100 text-red-600':      tx.status==='failed'
+                      }" x-text="tx.status"></span>
+                    </div>
+                  </div>
+                  <div class="text-right shrink-0 ml-3">
+                    <p class="font-bold text-base" :class="tx.type==='deposit' ? 'text-green-600' : 'text-gray-900'"
+                      x-text="'₦' + fmtAmount(tx.amount)"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="fmtDate(tx.created_at)"></p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="transactions.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No transactions</div>
+          <div class="flex justify-between items-center pt-2">
+            <button @click="txPage > 1 && (txPage--, loadTransactions())" :disabled="txPage <= 1"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
+            <span class="text-xs text-gray-400" x-text="'Page ' + txPage + ' / ' + txTotalPages"></span>
+            <button @click="txPage < txTotalPages && (txPage++, loadTransactions())" :disabled="txPage >= txTotalPages"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
+          </div>
+        </div>
+
+        <!-- ── APPOINTMENTS ──────────────────────────────────────── -->
+        <div x-show="activeTab==='appointments'" class="tab-content space-y-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-gray-400">All appointments</p>
+            <button @click="loadAppointments()" class="text-xs text-primary font-semibold">Refresh</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="a in appointments" :key="a.id">
+              <div class="data-card mb-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-gray-900 text-sm"
+                      x-text="(a.patient?.user?.first_name ?? '') + ' ' + (a.patient?.user?.last_name ?? '')"></p>
+                    <p class="text-xs text-gray-500 mt-0.5"
+                      x-text="'Dr. ' + (a.doctor?.user?.first_name ?? '') + ' ' + (a.doctor?.user?.last_name ?? '')"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="fmtDate(a.scheduled_at)"></p>
+                  </div>
+                  <div class="shrink-0 text-right">
+                    <span :class="{
+                      'badge bg-green-100 text-green-700':   a.status==='completed',
+                      'badge bg-blue-100 text-blue-700':     a.status==='confirmed',
+                      'badge badge-pending':                  a.status==='pending',
+                      'badge bg-red-100 text-red-600':       a.status==='cancelled',
+                      'badge bg-purple-100 text-purple-700': a.status==='in_progress'
+                    }" x-text="a.status?.replace(/_/g,' ')"></span>
+                    <p class="text-sm font-bold text-gray-900 mt-1" x-text="'₦' + fmtAmount(a.consultation_fee)"></p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="appointments.length === 0 && !loading" class="text-center py-12 text-gray-400 text-sm">No appointments</div>
+          <div class="flex justify-between items-center pt-2">
+            <button @click="apptPage > 1 && (apptPage--, loadAppointments())" :disabled="apptPage <= 1"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">← Prev</button>
+            <span class="text-xs text-gray-400" x-text="'Page ' + apptPage + ' / ' + apptTotalPages"></span>
+            <button @click="apptPage < apptTotalPages && (apptPage++, loadAppointments())" :disabled="apptPage >= apptTotalPages"
+              class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium disabled:opacity-40">Next →</button>
+          </div>
+        </div>
+
+        <!-- ── EMERGENCIES ───────────────────────────────────────── -->
+        <div x-show="activeTab==='emergencies'" class="tab-content space-y-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-gray-400">Active emergencies</p>
+            <button @click="loadEmergencies()" class="text-xs text-primary font-semibold">Refresh</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <template x-for="e in emergencies" :key="e.id">
+              <div class="data-card mb-0" :class="e.status==='active' ? 'border-red-200 bg-red-50/40' : ''">
+                <div class="flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                    :class="e.status==='active' ? 'bg-red-100' : 'bg-gray-100'">
+                    <svg class="w-5 h-5" :class="e.status==='active' ? 'text-red-600' : 'text-gray-500'"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-semibold text-sm text-gray-900"
+                        x-text="(e.patient?.user?.first_name ?? 'Unknown') + ' ' + (e.patient?.user?.last_name ?? '')"></span>
+                      <span :class="e.status==='active' ? 'badge badge-active' : 'badge badge-resolved'" x-text="e.status"></span>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-0.5" x-text="e.location_address || 'Location unavailable'"></p>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="fmtDate(e.created_at)"></p>
+                    <p class="text-xs font-mono text-gray-400 mt-0.5"
+                      x-text="(e.latitude?.toFixed(4) ?? '—') + ', ' + (e.longitude?.toFixed(4) ?? '—')"></p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="emergencies.length === 0 && !loading" class="text-center py-12 text-gray-400">
+            <svg class="w-12 h-12 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-sm">No active emergencies</p>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Mobile bottom tab bar (< lg only) -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 flex items-stretch shadow-lg"
+      style="padding-bottom: env(safe-area-inset-bottom);">
+      <button class="tab-btn" :class="activeTab==='overview' ? 'active' : ''" @click="activeTab='overview'">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        Home
+      </button>
+      <button class="tab-btn" :class="activeTab==='patients' ? 'active' : ''" @click="activeTab='patients'; loadPatients()">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Patients
+      </button>
+      <button class="tab-btn relative" :class="activeTab==='doctors' ? 'active' : ''" @click="activeTab='doctors'; loadDoctors()">
+        <div class="relative">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          <span x-show="stats.pending_doctors > 0"
+            class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full text-yellow-900 text-xs font-bold flex items-center justify-center"
+            x-text="stats.pending_doctors > 9 ? '9+' : stats.pending_doctors"></span>
+        </div>
+        Doctors
+      </button>
+      <button class="tab-btn" :class="activeTab==='transactions' ? 'active' : ''" @click="activeTab='transactions'; loadTransactions()">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+        </svg>
+        Txns
+      </button>
+      <button class="tab-btn relative" :class="activeTab==='emergencies' ? 'active' : ''" @click="activeTab='emergencies'; loadEmergencies()">
+        <div class="relative">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+          <span x-show="stats.active_emergencies > 0"
+            class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse"
+            x-text="stats.active_emergencies > 9 ? '9+' : stats.active_emergencies"></span>
+        </div>
+        SOS
+      </button>
+    </nav>
+
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════════
      TOAST
