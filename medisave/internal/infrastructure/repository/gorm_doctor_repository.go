@@ -68,8 +68,24 @@ func (r *GORMDoctorRepository) List(ctx context.Context, p pagination.Params) ([
 
 	q := r.dbc(ctx).Model(&entity.Doctor{}).
 		Preload("User").
-		Where("status = ? AND users.is_active = ?", entity.DoctorStatusVerified, true).
-		Joins("JOIN users ON users.id = doctors.user_id")
+		Joins("JOIN users ON users.id = doctors.user_id").
+		Where("users.is_active = ?", true)
+
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := q.Offset(p.Offset).Limit(p.Limit).Order("rating DESC").Find(&doctors).Error
+	return doctors, total, err
+}
+
+func (r *GORMDoctorRepository) ListVerified(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error) {
+	var doctors []*entity.Doctor
+	var total int64
+
+	q := r.dbc(ctx).Model(&entity.Doctor{}).
+		Preload("User").
+		Joins("JOIN users ON users.id = doctors.user_id").
+		Where("doctors.status = ? AND users.is_active = ?", entity.DoctorStatusVerified, true)
 
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err

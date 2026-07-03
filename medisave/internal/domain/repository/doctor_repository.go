@@ -14,6 +14,7 @@ type DoctorRepository interface {
 	FindByLicenseNumber(ctx context.Context, license string) (*entity.Doctor, error)
 	Update(ctx context.Context, doctor *entity.Doctor) error
 	List(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error)
+	ListVerified(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error)
 	ListAvailable(ctx context.Context, specialty string, p pagination.Params) ([]*entity.Doctor, int64, error)
 	SetAvailability(ctx context.Context, doctorID uint, available bool) error
 	UpdateStatus(ctx context.Context, doctorID uint, status entity.DoctorStatus) error

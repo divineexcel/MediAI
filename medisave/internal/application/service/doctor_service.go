@@ -154,7 +154,7 @@ func (s *doctorService) List(ctx context.Context, filter dto.DoctorListFilter, p
 	if filter.Available || filter.Specialty != "" {
 		return s.doctorRepo.ListAvailable(ctx, filter.Specialty, p)
 	}
-	return s.doctorRepo.List(ctx, p)
+	return s.doctorRepo.ListVerified(ctx, p)
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
