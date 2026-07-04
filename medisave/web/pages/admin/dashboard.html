@@ -788,7 +788,7 @@ function adminApp() {
     },
 
     async loadPendingDoctors() {
-      const r = await this.api('/admin/doctors?page=1&limit=5');
+      const r = await this.api('/admin/doctors?page=1&limit=5&status=pending');
       if (r.success) {
         this.pendingDoctors = (r.data ?? []).filter(d => d.status === 'pending');
       }

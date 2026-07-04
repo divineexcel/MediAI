@@ -67,7 +67,8 @@ func (h *AdminHandler) GetPatient(c *gin.Context) {
 // GET /api/v1/admin/doctors
 func (h *AdminHandler) ListDoctors(c *gin.Context) {
 	p := pagination.FromContext(c)
-	doctors, total, err := h.adminService.ListDoctors(c.Request.Context(), p)
+	status := c.Query("status")
+	doctors, total, err := h.adminService.ListDoctors(c.Request.Context(), status, p)
 	if err != nil {
 		middleware.MapError(c, err)
 		return

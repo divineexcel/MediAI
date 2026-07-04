@@ -16,7 +16,7 @@ type AdminService interface {
 	GetAnalytics(ctx context.Context) (*dto.AdminAnalyticsResponse, error)
 	ListPatients(ctx context.Context, p pagination.Params) ([]*entity.Patient, int64, error)
 	GetPatient(ctx context.Context, patientID uint) (*entity.Patient, error)
-	ListDoctors(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error)
+	ListDoctors(ctx context.Context, status string, p pagination.Params) ([]*entity.Doctor, int64, error)
 	GetDoctor(ctx context.Context, doctorID uint) (*entity.Doctor, error)
 	VerifyDoctor(ctx context.Context, doctorID uint, req *dto.VerifyDoctorRequest) error
 	ListTransactions(ctx context.Context, p pagination.Params) ([]*entity.Transaction, int64, error)
@@ -28,33 +28,39 @@ type AdminService interface {
 type adminService struct {
 	patientRepo     repository.PatientRepository
 	doctorRepo      repository.DoctorRepository
+	userRepo        repository.UserRepository
 	apptRepo        repository.AppointmentRepository
 	txRepo          repository.TransactionRepository
 	emergencyRepo   repository.EmergencyRepository
 	notifRepo       repository.NotificationRepository
 	campaignRepo    repository.CampaignRepository
 	smsClient       *smsclient.Client
+	txer            repository.Transactor
 }
 
 func NewAdminService(
 	patientRepo repository.PatientRepository,
 	doctorRepo repository.DoctorRepository,
+	userRepo repository.UserRepository,
 	apptRepo repository.AppointmentRepository,
 	txRepo repository.TransactionRepository,
 	emergencyRepo repository.EmergencyRepository,
 	notifRepo repository.NotificationRepository,
 	campaignRepo repository.CampaignRepository,
 	smsClient *smsclient.Client,
+	txer repository.Transactor,
 ) AdminService {
 	return &adminService{
 		patientRepo:   patientRepo,
 		doctorRepo:    doctorRepo,
+		userRepo:      userRepo,
 		apptRepo:      apptRepo,
 		txRepo:        txRepo,
 		emergencyRepo: emergencyRepo,
 		notifRepo:     notifRepo,
 		campaignRepo:  campaignRepo,
 		smsClient:     smsClient,
+		txer:          txer,
 	}
 }
 
@@ -91,8 +97,8 @@ func (s *adminService) GetPatient(ctx context.Context, patientID uint) (*entity.
 	return patient, nil
 }
 
-func (s *adminService) ListDoctors(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error) {
-	return s.doctorRepo.List(ctx, p)
+func (s *adminService) ListDoctors(ctx context.Context, status string, p pagination.Params) ([]*entity.Doctor, int64, error) {
+	return s.doctorRepo.List(ctx, status, p)
 }
 
 func (s *adminService) GetDoctor(ctx context.Context, doctorID uint) (*entity.Doctor, error) {
@@ -104,32 +110,55 @@ func (s *adminService) GetDoctor(ctx context.Context, doctorID uint) (*entity.Do
 }
 
 func (s *adminService) VerifyDoctor(ctx context.Context, doctorID uint, req *dto.VerifyDoctorRequest) error {
-	doctor, err := s.doctorRepo.FindByID(ctx, doctorID)
+	var doctor *entity.Doctor
+	var err error
+
+	err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		doctor, err = s.doctorRepo.FindByID(txCtx, doctorID)
+		if err != nil {
+			return pkgerrors.ErrDoctorNotFound
+		}
+
+		var status entity.DoctorStatus
+		switch req.Status {
+		case "verified":
+			status = entity.DoctorStatusVerified
+		case "suspended":
+			status = entity.DoctorStatusSuspended
+		case "rejected":
+			status = entity.DoctorStatusRejected
+		default:
+			return pkgerrors.ErrBadRequest
+		}
+
+		doctor.Status = status
+		doctor.Remarks = req.Remarks
+		if err := s.doctorRepo.Update(txCtx, doctor); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
+
+		user := &doctor.User
+		if status == entity.DoctorStatusVerified {
+			user.IsVerified = true
+		} else {
+			user.IsVerified = false
+		}
+
+		if err := s.userRepo.Update(txCtx, user); err != nil {
+			return pkgerrors.ErrInternalServer
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return pkgerrors.ErrDoctorNotFound
-	}
-
-	var status entity.DoctorStatus
-	switch req.Status {
-	case "verified":
-		status = entity.DoctorStatusVerified
-	case "suspended":
-		status = entity.DoctorStatusSuspended
-	case "rejected":
-		status = entity.DoctorStatusRejected
-	default:
-		return pkgerrors.ErrBadRequest
-	}
-
-	doctor.Status = status
-	doctor.Remarks = req.Remarks
-	if err := s.doctorRepo.Update(ctx, doctor); err != nil {
-		return pkgerrors.ErrInternalServer
+		return err
 	}
 
 	// Notify doctor
 	var title, body string
-	switch status {
+	switch doctor.Status {
 	case entity.DoctorStatusVerified:
 		title = "Profile Verified"
 		body = "Congratulations! Your account has been verified. You can now begin accepting patient consultations."

@@ -57,7 +57,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	recordSvc     := service.NewMedicalRecordService(repo.NewGORMMedicalRecordRepository(db), prescRepo, patientRepo)
 	emergencySvc  := service.NewEmergencyService(emergencyRepo, emergencyContRepo, patientRepo, notifRepo)
 	reminderSvc   := service.NewReminderService(reminderRepo, patientRepo)
-	adminSvc      := service.NewAdminService(patientRepo, doctorRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, smsClient)
+	adminSvc      := service.NewAdminService(patientRepo, doctorRepo, userRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, smsClient, txer)
 	ussdSvc       := service.NewUSSDService(ussdRepo, userRepo, patientRepo, doctorRepo, walletSvc, apptSvc, emergencySvc, reminderSvc, mapsClient)
 	roomSvc       := service.NewConsultationRoomService(roomRepo, apptRepo, patientRepo, doctorRepo, lkClient)
 

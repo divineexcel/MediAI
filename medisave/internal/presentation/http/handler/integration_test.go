@@ -329,8 +329,9 @@ func TestIntegration_DoctorVerificationAndRejectionWorkflow(t *testing.T) {
 	emergencyRepo := repo.NewGORMEmergencyRepository(db)
 	campaignRepo := repo.NewGORMCampaignRepository(db)
 
+	txer := repo.NewGORMTransactor(db)
 	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
-	adminSvc := service.NewAdminService(patientRepo, doctorRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, nil)
+	adminSvc := service.NewAdminService(patientRepo, doctorRepo, userRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, nil, txer)
 	doctorSvc := service.NewDoctorService(doctorRepo, userRepo, walletRepo, notifRepo, apptRepo)
 
 	ctx := context.Background()

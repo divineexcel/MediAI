@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -86,11 +87,43 @@ type LiveKitConfig struct {
 
 var App *Config
 
-func Load() *Config {
-	if err := godotenv.Load(); err != nil {
-		if err := godotenv.Load("medisave/.env"); err != nil {
-			log.Println("No .env file found, reading from environment")
+func findProjectRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	for {
+		// Look for either go.mod (dev) or .env (Docker/production) as root markers
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
 		}
+		if _, err := os.Stat(filepath.Join(dir, ".env")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+func Load() *Config {
+	rootDir := findProjectRoot()
+	if rootDir != "" {
+		_ = godotenv.Load(filepath.Join(rootDir, ".env"))
+	} else {
+		if err := godotenv.Load(); err != nil {
+			if err := godotenv.Load("medisave/.env"); err != nil {
+				log.Println("No .env file found, reading from environment")
+			}
+		}
+	}
+
+	dbPath := getEnv("DB_PATH", "./data/medisave.db")
+	if !filepath.IsAbs(dbPath) && rootDir != "" {
+		dbPath = filepath.Clean(filepath.Join(rootDir, dbPath))
 	}
 
 	App = &Config{
@@ -101,7 +134,7 @@ func Load() *Config {
 		},
 		Database: DatabaseConfig{
 			Driver: getEnv("DB_DRIVER", "sqlite"),
-			Path:   getEnv("DB_PATH", "./data/medisave.db"),
+			Path:   dbPath,
 			URL:    getEnv("DB_URL", ""),
 			Env:    getEnv("APP_ENV", "development"),
 		},

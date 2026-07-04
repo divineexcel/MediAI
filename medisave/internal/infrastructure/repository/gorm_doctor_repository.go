@@ -62,7 +62,7 @@ func (r *GORMDoctorRepository) Update(ctx context.Context, doctor *entity.Doctor
 	return r.dbc(ctx).Save(doctor).Error
 }
 
-func (r *GORMDoctorRepository) List(ctx context.Context, p pagination.Params) ([]*entity.Doctor, int64, error) {
+func (r *GORMDoctorRepository) List(ctx context.Context, status string, p pagination.Params) ([]*entity.Doctor, int64, error) {
 	var doctors []*entity.Doctor
 	var total int64
 
@@ -71,10 +71,22 @@ func (r *GORMDoctorRepository) List(ctx context.Context, p pagination.Params) ([
 		Joins("JOIN users ON users.id = doctors.user_id").
 		Where("users.is_active = ?", true)
 
+	if status != "" {
+		q = q.Where("doctors.status = ?", status)
+	}
+
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	err := q.Offset(p.Offset).Limit(p.Limit).Order("rating DESC").Find(&doctors).Error
+
+	// Sort pending registrations by created_at DESC (newest first). Otherwise sort by rating DESC.
+	if status == "pending" {
+		q = q.Order("doctors.created_at DESC")
+	} else {
+		q = q.Order("rating DESC")
+	}
+
+	err := q.Offset(p.Offset).Limit(p.Limit).Find(&doctors).Error
 	return doctors, total, err
 }
 
