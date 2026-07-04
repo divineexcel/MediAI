@@ -151,6 +151,7 @@ func (r *Router) RegisterAll(h *Handlers) {
 
 	// ─── VIDEO CALL SIGNALING (WebSocket, no JWT middleware — token in query) ─
 	v1.GET("/consultations/:appointment_id/call/signal", h.Call.Signal)
+	v1.GET("/ws", h.Call.ConnectUserWS)
 
 	// ─── MEDICAL RECORDS (/api/v1/records) ───────────────────────────────────
 	recordGroup := v1.Group("/records", authMW, middleware.RequirePatient())

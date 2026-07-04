@@ -457,6 +457,9 @@ func (s *appointmentService) Complete(ctx context.Context, userID uint, apptID u
 	now := time.Now()
 	appt.Status = entity.AppointmentStatusCompleted
 	appt.CompletedAt = &now
+	if appt.StartedAt != nil {
+		appt.CallDuration = int(now.Sub(*appt.StartedAt).Seconds())
+	}
 	if err := s.apptRepo.Update(ctx, appt); err != nil {
 		return pkgerrors.ErrInternalServer
 	}
@@ -719,6 +722,7 @@ func buildApptResponse(a *entity.Appointment) dto.AppointmentResponse {
 		ScheduledAt:     a.ScheduledAt,
 		StartedAt:       a.StartedAt,
 		CompletedAt:     a.CompletedAt,
+		CallDuration:    a.CallDuration,
 		ConsultationFee: a.ConsultationFee,
 		ChiefComplaint:  a.ChiefComplaint,
 		Notes:           a.Notes,

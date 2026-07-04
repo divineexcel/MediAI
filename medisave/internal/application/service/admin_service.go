@@ -129,16 +129,17 @@ func (s *adminService) VerifyDoctor(ctx context.Context, doctorID uint, req *dto
 
 	// Notify doctor
 	var title, body string
-	if status == entity.DoctorStatusVerified {
+	switch status {
+	case entity.DoctorStatusVerified:
 		title = "Profile Verified"
 		body = "Congratulations! Your account has been verified. You can now begin accepting patient consultations."
-	} else if status == entity.DoctorStatusRejected {
+	case entity.DoctorStatusRejected:
 		title = "Profile Verification Rejected"
 		body = "Your verification was not approved. Please review the feedback and resubmit your documents."
 		if req.Remarks != "" {
 			body += " Feedback: " + req.Remarks
 		}
-	} else {
+	default:
 		title = "Profile Suspended"
 		body = "Your MediSave doctor account has been suspended. Please contact support for details."
 		if req.Remarks != "" {

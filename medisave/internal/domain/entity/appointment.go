@@ -29,6 +29,7 @@ type Appointment struct {
 	ScheduledAt     time.Time         `gorm:"not null" json:"scheduled_at"`
 	StartedAt       *time.Time        `json:"started_at"`
 	CompletedAt     *time.Time        `json:"completed_at"`
+	CallDuration    int               `gorm:"default:0" json:"call_duration"`
 	ConsultationFee float64           `gorm:"not null" json:"consultation_fee"`
 	TransactionID   uint              `json:"transaction_id"`
 	ChiefComplaint  string            `json:"chief_complaint"`

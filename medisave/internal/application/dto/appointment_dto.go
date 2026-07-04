@@ -32,6 +32,7 @@ type AppointmentResponse struct {
 	ScheduledAt     time.Time                  `json:"scheduled_at"`
 	StartedAt       *time.Time                 `json:"started_at"`
 	CompletedAt     *time.Time                 `json:"completed_at"`
+	CallDuration    int                        `json:"call_duration"`
 	ConsultationFee float64                    `json:"consultation_fee"`
 	ChiefComplaint  string                     `json:"chief_complaint"`
 	Notes           string                     `json:"notes"`

@@ -71,7 +71,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 		Patient:      handler.NewPatientHandler(patientSvc, notifSvc),
 		Doctor:       handler.NewDoctorHandler(doctorSvc),
 		Wallet:       handler.NewWalletHandler(walletSvc),
-		Appointment:  handler.NewAppointmentHandler(apptSvc, roomSvc),
+		Appointment:  handler.NewAppointmentHandler(apptSvc, roomSvc, rtcHub),
 		Consultation: handler.NewConsultationHandler(apptSvc),
 		Record:       handler.NewMedicalRecordHandler(recordSvc),
 		AI:           handler.NewAIHandler(aiSvc),
@@ -81,7 +81,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 		SMS:          handler.NewSMSHandler(smsClient),
 		USSD:         handler.NewUSSDHandler(ussdSvc),
 		Admin:        handler.NewAdminHandler(adminSvc),
-		Call:         handler.NewCallHandler(rtcHub),
+		Call:         handler.NewCallHandler(rtcHub, jwtManager),
 		Room:         handler.NewRoomHandler(roomSvc),
 	}
 }

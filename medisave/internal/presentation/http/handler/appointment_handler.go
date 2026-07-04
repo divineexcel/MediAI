@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/medisave/app/internal/application/dto"
 	"github.com/medisave/app/internal/application/service"
+	"github.com/medisave/app/internal/infrastructure/rtc"
 	"github.com/medisave/app/internal/presentation/http/middleware"
 	"github.com/medisave/app/pkg/pagination"
 	"github.com/medisave/app/pkg/response"
@@ -15,10 +16,11 @@ import (
 type AppointmentHandler struct {
 	apptService service.AppointmentService
 	roomSvc     service.ConsultationRoomService
+	hub         *rtc.Hub
 }
 
-func NewAppointmentHandler(apptService service.AppointmentService, roomSvc service.ConsultationRoomService) *AppointmentHandler {
-	return &AppointmentHandler{apptService: apptService, roomSvc: roomSvc}
+func NewAppointmentHandler(apptService service.AppointmentService, roomSvc service.ConsultationRoomService, hub *rtc.Hub) *AppointmentHandler {
+	return &AppointmentHandler{apptService: apptService, roomSvc: roomSvc, hub: hub}
 }
 
 // GET /api/v1/appointments
@@ -54,6 +56,10 @@ func (h *AppointmentHandler) Book(c *gin.Context) {
 		middleware.MapError(c, err)
 		return
 	}
+
+	// Instantly notify the doctor of the incoming consultation request (for instant booking calls)
+	h.hub.NotifyUser(result.Appointment.Doctor.User.ID, "incoming_call", result.Appointment)
+
 	response.Created(c, "appointment booked", result)
 }
 
@@ -93,14 +99,30 @@ func (h *AppointmentHandler) Cancel(c *gin.Context) {
 		return
 	}
 
+	// Fetch details first to know who to notify
+	appt, err := h.apptService.GetByID(c.Request.Context(), claims.UserID, claims.Role, id)
+
 	if err := h.apptService.Cancel(c.Request.Context(), claims.UserID, claims.Role, id, req.Reason); err != nil {
 		middleware.MapError(c, err)
 		return
 	}
+
+	if err == nil {
+		targetUserID := appt.Patient.UserID
+		if claims.UserID == appt.Patient.UserID {
+			targetUserID = appt.Doctor.UserID
+		}
+		// Send decline notification
+		h.hub.NotifyUser(targetUserID, "call_declined", map[string]interface{}{
+			"appointment_id": id,
+			"reason":         req.Reason,
+		})
+	}
+
 	response.OK(c, "appointment cancelled", nil)
 }
 
-// PATCH /api/v1/appointments/:id/start  (doctor only)
+// PATCH /api/v1/appointments/:id/start
 func (h *AppointmentHandler) Start(c *gin.Context) {
 	claims := middleware.ClaimsFromContext(c)
 	id, err := parseID(c, "id")
@@ -113,6 +135,18 @@ func (h *AppointmentHandler) Start(c *gin.Context) {
 		middleware.MapError(c, err)
 		return
 	}
+
+	appt, err := h.apptService.GetByID(c.Request.Context(), claims.UserID, claims.Role, id)
+	if err == nil {
+		if claims.UserID == appt.Patient.UserID {
+			// Patient is calling the doctor
+			h.hub.NotifyUser(appt.Doctor.UserID, "incoming_call", appt)
+		} else {
+			// Doctor is accepting/starting the call
+			h.hub.NotifyUser(appt.Patient.UserID, "call_accepted", appt)
+		}
+	}
+
 	response.OK(c, "consultation started", nil)
 }
 

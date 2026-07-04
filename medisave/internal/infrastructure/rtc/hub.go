@@ -84,12 +84,57 @@ func (r *room) size() int {
 // ─── Hub ─────────────────────────────────────────────────────────────────────
 
 type Hub struct {
-	mu    sync.RWMutex
-	rooms map[string]*room
+	mu        sync.RWMutex
+	rooms     map[string]*room
+	userConns map[uint][]*UserClient
 }
 
 func NewHub() *Hub {
-	return &Hub{rooms: make(map[string]*room)}
+	return &Hub{
+		rooms:     make(map[string]*room),
+		userConns: make(map[uint][]*UserClient),
+	}
+}
+
+func (h *Hub) RegisterUser(userID uint, conn *websocket.Conn) *UserClient {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	client := &UserClient{
+		hub:    h,
+		userID: userID,
+		conn:   conn,
+		outbox: make(chan []byte, 64),
+	}
+	h.userConns[userID] = append(h.userConns[userID], client)
+	return client
+}
+
+func (h *Hub) UnregisterUser(userID uint, client *UserClient) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	conns := h.userConns[userID]
+	for i, c := range conns {
+		if c == client {
+			h.userConns[userID] = append(conns[:i], conns[i+1:]...)
+			break
+		}
+	}
+	if len(h.userConns[userID]) == 0 {
+		delete(h.userConns, userID)
+	}
+}
+
+func (h *Hub) NotifyUser(userID uint, msgType string, payload interface{}) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	conns, ok := h.userConns[userID]
+	if !ok {
+		return
+	}
+	msg := marshal(msgType, payload)
+	for _, c := range conns {
+		c.send(msg)
+	}
 }
 
 func (h *Hub) getOrCreate(roomID string) *room {
@@ -198,6 +243,69 @@ func (c *Client) ReadPump() {
 
 // WritePump drains the outbox and sends ping frames to keep the connection alive.
 func (c *Client) WritePump() {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+
+	for {
+		select {
+		case msg, ok := <-c.outbox:
+			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
+			}
+		case <-ticker.C:
+			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
+// ─── UserClient ──────────────────────────────────────────────────────────────
+
+type UserClient struct {
+	hub    *Hub
+	userID uint
+	conn   *websocket.Conn
+	outbox chan []byte
+}
+
+func (c *UserClient) send(msg []byte) {
+	select {
+	case c.outbox <- msg:
+	default:
+	}
+}
+
+func (c *UserClient) ReadPump() {
+	defer func() {
+		c.hub.UnregisterUser(c.userID, c)
+		c.conn.Close()
+	}()
+
+	c.conn.SetReadLimit(maxMsgSize)
+	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error {
+		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	})
+
+	for {
+		_, _, err := c.conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+}
+
+func (c *UserClient) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
