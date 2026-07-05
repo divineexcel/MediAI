@@ -8,7 +8,7 @@
   <script>tailwind.config={theme:{extend:{colors:{primary:'#0F9D58',secondary:'#34A853',accent:'#E8F5E9'}}}}</script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>body{font-family:'Inter',sans-serif;} .form-input{@apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition; min-height: 48px;}</style>
+  <style>body{font-family:'Inter',sans-serif;} .form-input{width:100%;padding:0.75rem 1rem;border:1px solid #e5e7eb;border-radius:0.75rem;font-size:0.875rem;line-height:1.25rem;min-height:48px;transition:all 0.15s ease;}.form-input:focus{outline:none;box-shadow:0 0 0 2px rgba(15,157,88,0.3);border-color:#0F9D58;}</style>
 </head>
 <body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="profileApp()" x-init="init()" id="profile-body">
 
