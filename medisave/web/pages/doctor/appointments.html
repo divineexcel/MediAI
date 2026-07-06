@@ -55,13 +55,13 @@
     <p style="color:#9CA3AF;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;" x-text="activeCallAppt?.type === 'chat' ? 'Patient is waiting to chat' : 'Patient is Waiting'"></p>
     <p style="color:#fff;font-size:1.3rem;font-weight:800;margin-bottom:6px;" x-text="activeCallAppt ? patientName(activeCallAppt) : ''"></p>
     <p style="color:#6B7280;font-size:.85rem;margin-bottom:28px;" x-text="activeCallAppt ? (activeCallAppt.type==='chat'?'Chat Consultation':(activeCallAppt.type==='voice'?'Voice Call':'Video Call')) : ''"></p>
-    <div style="display:flex;gap:16px;justify-content:center;">
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
       <button @click="dismissActiveCall()"
-        style="width:64px;height:64px;border-radius:50%;background:#374151;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        style="width:64px;height:64px;border-radius:50%;background:#374151;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
       <button @click="joinActiveCall()"
-        style="width:64px;height:64px;border-radius:50%;background:#0F9D58;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(15,157,88,.55);">
+        style="width:64px;height:64px;border-radius:50%;background:#0F9D58;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(15,157,88,.55);flex-shrink:0;">
         <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
       </button>
     </div>
@@ -114,7 +114,7 @@
 
 <!-- Consultation Modal -->
 <div x-show="showConsultModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-xs" @click.self="showConsultModal=false">
-  <div class="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col pb-8 sm:pb-0">
+  <div class="bg-white w-full max-w-2xl rounded-t-[32px] sm:rounded-3xl shadow-2xl overflow-hidden max-h-[95vh] sm:max-h-[85vh] flex flex-col pb-8 sm:pb-0">
     <div class="sm:hidden w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-3 shrink-0"></div>
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
       <div>
@@ -230,7 +230,7 @@
 </div>
 
 <!-- Main -->
-<div class="max-w-2xl mx-auto px-4 py-8 pb-28">
+<div class="max-w-2xl mx-auto px-4 py-8 pb-28 lg:pb-8">
   <div class="flex items-center gap-4 mb-6">
     <a href="/doctor/dashboard" class="w-9 h-9 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-gray-500 hover:text-primary transition shadow-sm">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -244,12 +244,12 @@
     <p class="text-2xl font-bold" x-text="todayAppts.length + ' appointment' + (todayAppts.length===1?'':'s')"></p>
     <div class="mt-3 space-y-2">
       <template x-for="appt in todayAppts.slice(0,3)" :key="appt.id">
-        <div class="flex items-center justify-between bg-white/20 rounded-xl px-3 py-2">
-          <div>
-            <p class="text-sm font-semibold" x-text="patientName(appt)"></p>
-            <p class="text-xs opacity-80" x-text="formatTime(appt.scheduled_at)+' · '+appt.type"></p>
+        <div class="flex items-center justify-between bg-white/20 rounded-xl px-3 py-2 gap-2">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold truncate" x-text="patientName(appt)"></p>
+            <p class="text-xs opacity-80 truncate" x-text="formatTime(appt.scheduled_at)+' · '+appt.type"></p>
           </div>
-          <span :class="'status-'+appt.status" class="px-2 py-0.5 rounded-lg text-xs font-semibold capitalize" x-text="appt.status.replace('_',' ')"></span>
+          <span :class="'status-'+appt.status" class="px-2 py-0.5 rounded-lg text-xs font-semibold capitalize flex-shrink-0" x-text="appt.status.replace('_',' ')"></span>
         </div>
       </template>
     </div>
@@ -326,23 +326,23 @@
             <div class="flex gap-2 flex-wrap">
               <template x-if="appt.status==='pending' || appt.status==='confirmed'">
                 <button @click="startConsultation(appt)" :disabled="startLoading===appt.id"
-                  class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition disabled:opacity-50">
+                  class="flex-[2] py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition disabled:opacity-50 min-w-0 truncate">
                   <span x-text="startLoading===appt.id ? 'Starting...' : 'Start Consultation'"></span>
                 </button>
               </template>
               <template x-if="appt.status==='in_progress'">
                 <a :href="'/consultation/'+appt.id+'/call'"
-                  class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition text-center"
+                  class="flex-[2] py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition text-center min-w-0"
                   x-text="appt.type==='chat' ? 'Join Chat' : appt.type==='voice' ? 'Join Voice Call' : 'Join Video Call'"></a>
               </template>
               <template x-if="appt.status==='in_progress'">
-                <button @click="openConsult(appt)" class="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">Notes</button>
+                <button @click="openConsult(appt)" class="flex-1 px-3 py-2 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-50 transition min-w-0">Notes</button>
               </template>
               <template x-if="appt.status==='completed'">
-                <button @click="openConsult(appt)" class="flex-1 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">View Summary</button>
+                <button @click="openConsult(appt)" class="flex-1 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-semibold hover:bg-gray-50 transition min-w-0">View Summary</button>
               </template>
               <template x-if="appt.status==='pending' || appt.status==='confirmed'">
-                <button @click="openCancelModal(appt)" class="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition">Cancel</button>
+                <button @click="openCancelModal(appt)" class="flex-1 px-3 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition min-w-0">Cancel</button>
               </template>
             </div>
           </div>
@@ -359,8 +359,8 @@
   </div>
 </div>
 
-<!-- Bottom Nav -->
-<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
+<!-- Bottom Nav (hidden on desktop) -->
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2 lg:hidden"
   style="padding-bottom:env(safe-area-inset-bottom)">
   <div class="flex justify-around items-center h-16">
     <a href="/doctor/dashboard" class="bnav-btn">

@@ -45,6 +45,7 @@
       display: flex;
       flex-direction: column;
       background: linear-gradient(135deg, #09090b, #18181b);
+      min-width: 0;
     }
 
     /* ─── VIDEOS ─── */
@@ -68,6 +69,12 @@
       height: 100%;
       object-fit: cover;
       display: block;
+    }
+    #remote-video {
+      background: #000;
+    }
+    #local-video {
+      background: #111;
     }
 
     /* Floating Local Video (PiP) */
@@ -192,6 +199,9 @@
       display: flex;
       gap: 16px;
       align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 8px;
     }
 
     .btn-circle {
@@ -206,6 +216,7 @@
       color: #fff;
       transition: all 0.2s ease;
       position: relative;
+      flex-shrink: 0;
     }
 
     .btn-circle:hover {
@@ -243,6 +254,7 @@
       cursor: pointer;
       color: #fff;
       transition: all 0.2s ease;
+      flex-shrink: 0;
     }
 
     .btn-end:hover {
@@ -282,6 +294,7 @@
       flex-direction: column;
       border-left: 1px solid var(--border-glass);
       box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+      padding-top: env(safe-area-inset-top, 0px);
     }
 
     .side-panel.open {
@@ -401,6 +414,7 @@
 
     #chat-form {
       padding: 16px;
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
       border-top: 1px solid var(--border-glass);
       display: flex;
       gap: 10px;
@@ -623,19 +637,80 @@
       display: none;
     }
 
-    /* ─── MOBILE: side panels stop above controls ─── */
-    @media (max-width: 1023px) {
+    /* ─── MOBILE (<768px): slide-in panels above controls ─── */
+    @media (max-width: 767px) {
+      .side-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 380px;
+        z-index: 100;
+        transform: translateX(100%);
+        border-left: 1px solid var(--border-glass);
+        box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+      }
+
       .side-panel.open {
+        transform: translateX(0);
         height: calc(100% - 120px);
         bottom: auto;
+        display: flex;
       }
+
       #end-bar {
         z-index: 101;
       }
     }
 
-    /* ─── DESKTOP (≥1024px): side-by-side video + chat ─── */
-    @media (min-width: 1024px) {
+    /* ─── VERY SMALL SCREENS (≤374px): compact controls ─── */
+    @media (max-width: 374px) {
+      .btn-circle {
+        width: 44px;
+        height: 44px;
+      }
+      .btn-end {
+        width: 52px;
+        height: 52px;
+      }
+      .control-group {
+        gap: 10px;
+      }
+      #end-bar {
+        height: 80px;
+      }
+      .side-panel.open {
+        height: calc(100% - 100px);
+      }
+      #local-video-container {
+        width: 90px;
+        height: 120px;
+        top: 70px;
+        right: 10px;
+      }
+      #topbar {
+        padding: 12px 14px;
+      }
+      .topbar-info {
+        gap: 8px;
+      }
+      #topbar-peer-name {
+        font-size: 0.78rem;
+      }
+      .chat-bubble {
+        max-width: 85%;
+        font-size: 0.8rem;
+      }
+      .pulsing-avatar {
+        width: 90px;
+        height: 90px;
+        font-size: 1.8rem;
+      }
+    }
+
+    /* ─── TABLET+ (≥768px): docked side panel ─── */
+    @media (min-width: 768px) {
       #app-container {
         flex-direction: row;
       }
@@ -645,13 +720,19 @@
         min-width: 0;
       }
 
+      #local-video-container {
+        width: 160px;
+        height: 210px;
+        top: 90px;
+      }
+
       .side-panel {
         position: relative;
         top: auto;
         right: auto;
         bottom: auto;
-        width: 380px;
-        max-width: 380px;
+        width: 320px;
+        max-width: 320px;
         transform: none;
         display: none;
         border-left: 1px solid var(--border-glass);
@@ -665,6 +746,62 @@
       .side-panel.open {
         display: flex;
         transform: none;
+      }
+
+      #end-bar {
+        height: 110px;
+      }
+
+      .btn-circle {
+        width: 56px;
+        height: 56px;
+      }
+
+      .btn-end {
+        width: 68px;
+        height: 68px;
+      }
+
+      .control-group {
+        gap: 18px;
+      }
+
+      #chat-messages-container {
+        padding: 20px 20px 110px;
+      }
+
+      .panel-scroll-content {
+        padding: 20px 20px 110px;
+      }
+
+      .chat-bubble {
+        font-size: 0.9rem;
+      }
+
+      .presc-medicine {
+        font-size: 0.95rem;
+      }
+
+      .presc-meta {
+        font-size: 0.82rem;
+      }
+
+      .pulsing-avatar {
+        width: 140px;
+        height: 140px;
+        font-size: 2.6rem;
+      }
+
+      #chat-input {
+        font-size: 0.9rem;
+      }
+    }
+
+    /* ─── DESKTOP (≥1024px): full-size layout ─── */
+    @media (min-width: 1024px) {
+      .side-panel {
+        width: 380px;
+        max-width: 380px;
       }
 
       #local-video-container {
@@ -697,10 +834,43 @@
         height: 160px;
         font-size: 3rem;
       }
+
+      #chat-messages-container {
+        padding: 20px 20px 120px;
+      }
+
+      .panel-scroll-content {
+        padding: 20px 20px 120px;
+      }
+
+      .chat-bubble {
+        font-size: 0.95rem;
+      }
+
+      .presc-medicine {
+        font-size: 1rem;
+      }
+
+      .presc-meta {
+        font-size: 0.85rem;
+      }
+
+      .presc-instr {
+        font-size: 0.8rem;
+      }
+
+      .panel-title {
+        font-size: 1.05rem;
+      }
+
+      #chat-input {
+        font-size: 0.95rem;
+        height: 48px;
+      }
     }
 
-    /* ─── LANDSCAPE MOBILE ─── */
-    @media (max-width: 1023px) and (orientation: landscape) {
+    /* ─── LANDSCAPE MOBILE (below tablet, landscape) ─── */
+    @media (max-width: 767px) and (orientation: landscape) {
       #end-bar {
         height: 80px;
         padding-bottom: 4px;
@@ -731,22 +901,15 @@
       .side-panel.open {
         height: calc(100% - 100px);
       }
-    }
 
-    /* ─── TABLET (768–1023px): larger controls ─── */
-    @media (min-width: 768px) and (max-width: 1023px) {
-      .btn-circle {
-        width: 56px;
-        height: 56px;
+      #topbar {
+        padding: 10px 14px;
       }
 
-      .btn-end {
-        width: 66px;
-        height: 66px;
-      }
-
-      .control-group {
-        gap: 18px;
+      .pulsing-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 1.6rem;
       }
     }
   </style>
@@ -819,6 +982,13 @@
         <button id="btn-end" class="btn-end" onclick="endCall()">
           <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
             <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+          </svg>
+        </button>
+
+        <!-- Speaker Toggle -->
+        <button id="btn-speaker" class="btn-circle active" onclick="toggleSpeaker()">
+          <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
           </svg>
         </button>
 
@@ -1276,6 +1446,25 @@
     updateButtonUI('btn-cam', _camEnabled);
     document.getElementById('local-avatar-placeholder').style.display = _camEnabled ? 'none' : 'flex';
     sendSignal({ type: 'cam-status', payload: { enabled: _camEnabled } });
+  }
+
+  function toggleSpeaker() {
+    _speakerActive = !_speakerActive;
+    updateButtonUI('btn-speaker', _speakerActive);
+    if (_localStream) {
+      const audioTracks = _localStream.getAudioTracks();
+      // On most browsers, speaker output is controlled via audio output device
+      // Toggle between speakerphone and earpiece where supported
+      if (typeof audioTracks[0]?.sinkId !== 'undefined') {
+        // Modern browsers support setSinkId for audio output
+        const audioEl = document.getElementById('remote-video');
+        if (audioEl && audioEl.setSinkId) {
+          audioEl.setSinkId(_speakerActive ? '' : 'default')
+            .catch(() => {});
+        }
+      }
+    }
+    showToast(_speakerActive ? 'Speaker on' : 'Speaker off', _speakerActive ? 'rgba(15,157,88,0.95)' : 'rgba(107,114,128,0.95)');
   }
 
   function updatePeerMicBadge(muted) {

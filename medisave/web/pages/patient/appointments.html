@@ -22,6 +22,10 @@
       transition: color .15s; -webkit-tap-highlight-color: transparent;
     }
     .bnav-btn.active { color: #0F9D58; }
+    @media (min-width: 1024px) {
+      .bnav-btn { padding: 12px 6px; font-size: 11px; }
+      .bnav-btn svg { width: 20px; height: 20px; }
+    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen opacity-0 transition-opacity duration-300 ease-out" x-data="apptApp()" x-init="init()" @beforeunload.window="stopRing()" x-cloak id="appt-body">
@@ -44,7 +48,7 @@
 </style>
 
 <div x-show="callReadyAppt" x-cloak
-  style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+  style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:20px;">
 
   <!-- Animated ring icon -->
   <div style="position:relative;width:130px;height:130px;display:flex;align-items:center;justify-content:center;margin-bottom:28px;">
@@ -59,16 +63,16 @@
   </div>
 
   <!-- Text -->
-  <p style="color:#9CA3AF;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;" x-text="callReadyAppt?.type === 'chat' ? 'New Chat Message' : 'Incoming Call'"></p>
-  <p style="color:#fff;font-size:1.4rem;font-weight:700;margin-bottom:6px;"
+  <p style="color:#9CA3AF;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;text-align:center;" x-text="callReadyAppt?.type === 'chat' ? 'New Chat Message' : 'Incoming Call'"></p>
+  <p style="color:#fff;font-size:1.4rem;font-weight:700;margin-bottom:6px;text-align:center;word-break:break-word;"
     x-text="callReadyAppt?.doctor?.user?.first_name ? 'Dr. '+callReadyAppt.doctor.user.first_name+' '+callReadyAppt.doctor.user.last_name : 'Your Doctor'">
   </p>
-  <p style="color:#86EFAC;font-size:.875rem;margin-bottom:44px;"
+  <p style="color:#86EFAC;font-size:.875rem;margin-bottom:44px;text-align:center;"
     x-text="callReadyAppt?.type ? (callReadyAppt.type === 'chat' ? 'Chat Consultation' : callReadyAppt.type === 'voice' ? 'Voice Call' : 'Video Call') : 'Consultation'">
   </p>
 
   <!-- Action buttons -->
-  <div style="display:flex;gap:32px;align-items:center;">
+  <div style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;justify-content:center;">
     <!-- Decline -->
     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
       <button @click="declineCall()" style="width:68px;height:68px;border-radius:50%;background:#ef4444;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(239,68,68,.4);">
@@ -180,7 +184,7 @@
       <!-- Type -->
       <div>
         <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">Consultation Type</label>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-3 gap-2 max-[374px]:grid-cols-1">
           <template x-for="t in ['chat','voice','video']" :key="t">
             <button @click="bookForm.type=t"
               :class="bookForm.type===t ? 'border-primary bg-accent text-primary' : 'border-gray-200 text-gray-600'"
@@ -319,7 +323,7 @@
 </div>
 
 <!-- Main -->
-<div class="max-w-2xl mx-auto px-4 py-8 pb-28">
+<div class="max-w-2xl mx-auto px-4 py-8 pb-28 lg:pb-8">
   <!-- Header -->
   <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-4">
@@ -413,22 +417,22 @@
                 <span class="font-semibold text-primary" x-text="'₦'+(appt.consultation_fee||0).toLocaleString()"></span>
               </div>
               <!-- Actions -->
-              <div class="flex gap-2">
+              <div class="flex gap-2 flex-wrap">
                 <template x-if="appt.status==='in_progress'">
                   <a :href="'/consultation/'+appt.id+'/call'"
-                    class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-semibold text-center hover:bg-secondary transition animate-pulse"
+                    class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-semibold text-center hover:bg-secondary transition animate-pulse min-w-0"
                     x-text="appt.type==='chat' ? 'Join Chat' : appt.type==='voice' ? 'Join Voice Call' : 'Join Video Call'"></a>
                 </template>
                 <template x-if="appt.status==='completed' && !appt.has_review">
-                  <button @click="openReview(appt)" class="flex-1 py-2 border border-primary text-primary rounded-xl text-xs font-semibold hover:bg-accent transition">Leave Review ★</button>
+                  <button @click="openReview(appt)" class="flex-1 py-2 border border-primary text-primary rounded-xl text-xs font-semibold hover:bg-accent transition min-w-0">Leave Review ★</button>
                 </template>
                 <template x-if="appt.status==='pending' || appt.status==='confirmed'">
-                  <div class="flex-1 flex gap-2">
+                  <div class="flex-1 flex gap-2 min-w-0">
                     <button @click="startConsultation(appt)" :disabled="startLoading===appt.id"
-                      class="flex-1 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition disabled:opacity-50">
+                      class="flex-[2] py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-secondary transition disabled:opacity-50 min-w-0 truncate">
                       <span x-text="startLoading===appt.id ? 'Calling...' : 'Call Doctor'"></span>
                     </button>
-                    <button @click="openCancel(appt)" class="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition">Cancel</button>
+                    <button @click="openCancel(appt)" class="flex-1 px-3 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition min-w-0">Cancel</button>
                   </div>
                 </template>
               </div>
@@ -518,8 +522,8 @@
   </div>
 </div>
 
-<!-- Bottom Nav -->
-<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2"
+<!-- Bottom Nav (hidden on desktop) -->
+<nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] px-2 lg:hidden"
   style="padding-bottom:env(safe-area-inset-bottom)">
   <div class="flex justify-around items-center h-16">
     <a href="/patient/dashboard" class="bnav-btn">
