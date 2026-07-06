@@ -62,7 +62,7 @@ func TestIntegration_DatabasePersistenceAndTransactions(t *testing.T) {
 	reviewRepo := repo.NewGORMReviewRepository(db)
 	txer := repo.NewGORMTransactor(db)
 
-	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager, txer)
 	apptSvc := service.NewAppointmentService(
 		apptRepo, consultRepo, prescRepo, reviewRepo,
 		patientRepo, doctorRepo, walletRepo, txRepo, notifRepo, txer,
@@ -238,7 +238,7 @@ func TestIntegration_DoctorCancellation(t *testing.T) {
 	reviewRepo := repo.NewGORMReviewRepository(db)
 	txer := repo.NewGORMTransactor(db)
 
-	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager, txer)
 	apptSvc := service.NewAppointmentService(
 		apptRepo, consultRepo, prescRepo, reviewRepo,
 		patientRepo, doctorRepo, walletRepo, txRepo, notifRepo, txer,
@@ -330,7 +330,7 @@ func TestIntegration_DoctorVerificationAndRejectionWorkflow(t *testing.T) {
 	campaignRepo := repo.NewGORMCampaignRepository(db)
 
 	txer := repo.NewGORMTransactor(db)
-	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager, txer)
 	adminSvc := service.NewAdminService(patientRepo, doctorRepo, userRepo, apptRepo, txRepo, emergencyRepo, notifRepo, campaignRepo, nil, txer)
 	doctorSvc := service.NewDoctorService(doctorRepo, userRepo, walletRepo, notifRepo, apptRepo)
 
@@ -429,4 +429,122 @@ func TestIntegration_DoctorVerificationAndRejectionWorkflow(t *testing.T) {
 	// Toggle availability when suspended should fail
 	err = doctorSvc.ToggleAvailability(ctx, doctorResp.User.ID, true)
 	assert.Error(t, err)
+}
+
+func TestIntegration_RegisterThenLoginAcrossRestart(t *testing.T) {
+	// This test verifies that users registered before a DB restart
+	// can successfully log in after reconnecting (simulating the dual-database fix).
+	tempDir, err := os.MkdirTemp("", "medisave-reg-login-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	dbPath := filepath.Join(tempDir, "medisave_test.db")
+
+	connectDB := func() *gorm.DB {
+		db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+			Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+		})
+		require.NoError(t, err)
+		sqlDB, err := db.DB()
+		require.NoError(t, err)
+		sqlDB.SetMaxOpenConns(1)
+		sqlDB.SetMaxIdleConns(1)
+		db.Exec("PRAGMA foreign_keys=ON")
+		return db
+	}
+
+	// 1. First session: register users
+	db1 := connectDB()
+	require.NoError(t, migrations.Run(db1))
+
+	jwtManager1 := pkgjwt.NewManager("test-access-secret", "test-refresh-secret", 1, 7)
+	userRepo1 := repo.NewGORMUserRepository(db1)
+	patientRepo1 := repo.NewGORMPatientRepository(db1)
+	doctorRepo1 := repo.NewGORMDoctorRepository(db1)
+	walletRepo1 := repo.NewGORMWalletRepository(db1)
+	txer1 := repo.NewGORMTransactor(db1)
+
+	authSvc1 := service.NewAuthService(userRepo1, patientRepo1, doctorRepo1, walletRepo1, jwtManager1, txer1)
+
+	ctx := context.Background()
+
+	// Register Patient
+	pResp, err := authSvc1.RegisterPatient(ctx, &dto.RegisterRequest{
+		FirstName: "Alice",
+		LastName:  "Johnson",
+		Email:     "alice.j@example.com",
+		Password:  "SecurePassword@123",
+		Phone:     "+2348060000001",
+		Role:      "patient",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, pResp.Tokens.AccessToken)
+
+	// Register Doctor
+	dResp, err := authSvc1.RegisterDoctor(ctx, &dto.DoctorRegisterRequest{
+		RegisterRequest: dto.RegisterRequest{
+			FirstName: "Bob",
+			LastName:  "Williams",
+			Email:     "bob.w@example.com",
+			Password:  "SecurePassword@123",
+			Phone:     "+2348060000002",
+			Role:      "doctor",
+		},
+		LicenseNumber:     "MD-LOGIN-001",
+		Specialty:         "Cardiology",
+		YearsOfExperience: 10,
+		ConsultationFee:   8000.0,
+		Hospital:          "Heart Clinic",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, dResp.Tokens.AccessToken)
+
+	// Close the first connection
+	sqlDB1, err := db1.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB1.Close())
+
+	// 2. Second session: login with same credentials on fresh connection
+	db2 := connectDB()
+	defer func() {
+		sqlDB2, _ := db2.DB()
+		if sqlDB2 != nil {
+			sqlDB2.Close()
+		}
+	}()
+
+	jwtManager2 := pkgjwt.NewManager("test-access-secret", "test-refresh-secret", 1, 7)
+	userRepo2 := repo.NewGORMUserRepository(db2)
+	patientRepo2 := repo.NewGORMPatientRepository(db2)
+	doctorRepo2 := repo.NewGORMDoctorRepository(db2)
+	walletRepo2 := repo.NewGORMWalletRepository(db2)
+	txer2 := repo.NewGORMTransactor(db2)
+
+	authSvc2 := service.NewAuthService(userRepo2, patientRepo2, doctorRepo2, walletRepo2, jwtManager2, txer2)
+
+	// Patient login after restart
+	loginResp, err := authSvc2.Login(ctx, &dto.LoginRequest{
+		Email:    "alice.j@example.com",
+		Password: "SecurePassword@123",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, loginResp.Tokens.AccessToken)
+	assert.Equal(t, "alice.j@example.com", loginResp.User.Email)
+	assert.Equal(t, entity.RolePatient, loginResp.User.Role)
+
+	// Doctor login after restart
+	docLoginResp, err := authSvc2.Login(ctx, &dto.LoginRequest{
+		Email:    "bob.w@example.com",
+		Password: "SecurePassword@123",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, docLoginResp.Tokens.AccessToken)
+	assert.Equal(t, "bob.w@example.com", docLoginResp.User.Email)
+	assert.Equal(t, entity.RoleDoctor, docLoginResp.User.Role)
+
+	// Verify doctor is pending and not yet available (registration default)
+	docRecord, err := doctorRepo2.FindByUserID(ctx, docLoginResp.User.ID)
+	require.NoError(t, err)
+	assert.Equal(t, entity.DoctorStatusPending, docRecord.Status)
+	assert.False(t, docRecord.IsAvailable)
 }

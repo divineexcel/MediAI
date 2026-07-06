@@ -134,6 +134,9 @@ func (s *adminService) VerifyDoctor(ctx context.Context, doctorID uint, req *dto
 
 		doctor.Status = status
 		doctor.Remarks = req.Remarks
+		if status == entity.DoctorStatusVerified {
+			doctor.IsAvailable = true
+		}
 		if err := s.doctorRepo.Update(txCtx, doctor); err != nil {
 			return pkgerrors.ErrInternalServer
 		}

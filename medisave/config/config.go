@@ -93,12 +93,19 @@ func findProjectRoot() string {
 		return ""
 	}
 	for {
-		// Look for either go.mod (dev) or .env (Docker/production) as root markers
+		// Look for go.mod or .env directly in current dir
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir
 		}
 		if _, err := os.Stat(filepath.Join(dir, ".env")); err == nil {
 			return dir
+		}
+		// Also check the "medisave/" subdirectory — handles running from parent dir
+		if _, err := os.Stat(filepath.Join(dir, "medisave", "go.mod")); err == nil {
+			return filepath.Join(dir, "medisave")
+		}
+		if _, err := os.Stat(filepath.Join(dir, "medisave", ".env")); err == nil {
+			return filepath.Join(dir, "medisave")
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {

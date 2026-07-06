@@ -33,6 +33,7 @@ type authService struct {
 	doctorRepo  repository.DoctorRepository
 	walletRepo  repository.WalletRepository
 	jwtManager  *pkgjwt.Manager
+	txer        repository.Transactor
 }
 
 func NewAuthService(
@@ -41,6 +42,7 @@ func NewAuthService(
 	doctorRepo repository.DoctorRepository,
 	walletRepo repository.WalletRepository,
 	jwtManager *pkgjwt.Manager,
+	txer repository.Transactor,
 ) AuthService {
 	return &authService{
 		userRepo:    userRepo,
@@ -48,6 +50,7 @@ func NewAuthService(
 		doctorRepo:  doctorRepo,
 		walletRepo:  walletRepo,
 		jwtManager:  jwtManager,
+		txer:        txer,
 	}
 }
 
@@ -72,36 +75,44 @@ func (s *authService) RegisterPatient(ctx context.Context, req *dto.RegisterRequ
 		return nil, pkgerrors.ErrInternalServer
 	}
 
-	user := &entity.User{
-		UUID:         utils.NewUUID(),
-		FirstName:    strings.TrimSpace(req.FirstName),
-		LastName:     strings.TrimSpace(req.LastName),
-		Email:        email,
-		Phone:        req.Phone,
-		PasswordHash: hashedPw,
-		Role:         entity.RolePatient,
-		IsVerified:   true,
-		IsActive:     true,
-	}
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		logger.Error("failed to create user during patient registration", zap.String("email", email), zap.Error(err))
-		return nil, pkgerrors.ErrInternalServer
-	}
+	var user *entity.User
+	err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+		user = &entity.User{
+			UUID:         utils.NewUUID(),
+			FirstName:    strings.TrimSpace(req.FirstName),
+			LastName:     strings.TrimSpace(req.LastName),
+			Email:        email,
+			Phone:        req.Phone,
+			PasswordHash: hashedPw,
+			Role:         entity.RolePatient,
+			IsVerified:   true,
+			IsActive:     true,
+		}
+		if err := s.userRepo.Create(txCtx, user); err != nil {
+			logger.Error("failed to create user during patient registration", zap.String("email", email), zap.Error(err))
+			return pkgerrors.ErrInternalServer
+		}
 
-	patient := &entity.Patient{UserID: user.ID}
-	if err := s.patientRepo.Create(ctx, patient); err != nil {
-		logger.Error("failed to create patient record during registration", zap.String("email", email), zap.Error(err))
-		return nil, pkgerrors.ErrInternalServer
-	}
+		patient := &entity.Patient{UserID: user.ID}
+		if err := s.patientRepo.Create(txCtx, patient); err != nil {
+			logger.Error("failed to create patient record during registration", zap.String("email", email), zap.Error(err))
+			return pkgerrors.ErrInternalServer
+		}
 
-	if err := s.walletRepo.Create(ctx, &entity.Wallet{
-		UserID:    user.ID,
-		OwnerType: entity.WalletOwnerPatient,
-		Currency:  "NGN",
-		IsActive:  true,
-	}); err != nil {
-		logger.Error("failed to create wallet during patient registration", zap.String("email", email), zap.Error(err))
-		return nil, pkgerrors.ErrInternalServer
+		if err := s.walletRepo.Create(txCtx, &entity.Wallet{
+			UserID:    user.ID,
+			OwnerType: entity.WalletOwnerPatient,
+			Currency:  "NGN",
+			IsActive:  true,
+		}); err != nil {
+			logger.Error("failed to create wallet during patient registration", zap.String("email", email), zap.Error(err))
+			return pkgerrors.ErrInternalServer
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	logger.Info("patient registered successfully", zap.String("email", email), zap.Uint("user_id", user.ID))
@@ -135,47 +146,55 @@ func (s *authService) RegisterDoctor(ctx context.Context, req *dto.DoctorRegiste
 		return nil, pkgerrors.ErrInternalServer
 	}
 
-	user := &entity.User{
-		UUID:         utils.NewUUID(),
-		FirstName:    strings.TrimSpace(req.FirstName),
-		LastName:     strings.TrimSpace(req.LastName),
-		Email:        email,
-		Phone:        req.Phone,
-		PasswordHash: hashedPw,
-		Role:         entity.RoleDoctor,
-		IsVerified:   true,
-		IsActive:     true,
-	}
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		logger.Error("failed to create user during doctor registration", zap.String("email", email), zap.Error(err))
-		return nil, pkgerrors.ErrInternalServer
-	}
+	var user *entity.User
+	err = s.txer.WithinTransaction(ctx, func(txCtx context.Context) error {
+		user = &entity.User{
+			UUID:         utils.NewUUID(),
+			FirstName:    strings.TrimSpace(req.FirstName),
+			LastName:     strings.TrimSpace(req.LastName),
+			Email:        email,
+			Phone:        req.Phone,
+			PasswordHash: hashedPw,
+			Role:         entity.RoleDoctor,
+			IsVerified:   true,
+			IsActive:     true,
+		}
+		if err := s.userRepo.Create(txCtx, user); err != nil {
+			logger.Error("failed to create user during doctor registration", zap.String("email", email), zap.Error(err))
+			return pkgerrors.ErrInternalServer
+		}
 
-	doctor := &entity.Doctor{
-		UserID:            user.ID,
-		LicenseNumber:     req.LicenseNumber,
-		Specialty:         req.Specialty,
-		YearsOfExperience: req.YearsOfExperience,
-		ConsultationFee:   req.ConsultationFee,
-		Hospital:          req.Hospital,
-		WorkIDURL:         req.WorkIDURL,
-		MedicalLicenseURL: req.MedicalLicenseURL,
-		Status:            entity.DoctorStatusPending,
-		IsAvailable:       false,
-	}
-	if err := s.doctorRepo.Create(ctx, doctor); err != nil {
-		logger.Error("failed to create doctor record during registration", zap.String("email", email), zap.Error(err))
-		return nil, pkgerrors.ErrInternalServer
-	}
+		doctor := &entity.Doctor{
+			UserID:            user.ID,
+			LicenseNumber:     req.LicenseNumber,
+			Specialty:         req.Specialty,
+			YearsOfExperience: req.YearsOfExperience,
+			ConsultationFee:   req.ConsultationFee,
+			Hospital:          req.Hospital,
+			WorkIDURL:         req.WorkIDURL,
+			MedicalLicenseURL: req.MedicalLicenseURL,
+			Status:            entity.DoctorStatusPending,
+			IsAvailable:       false,
+		}
+		if err := s.doctorRepo.Create(txCtx, doctor); err != nil {
+			logger.Error("failed to create doctor record during registration", zap.String("email", email), zap.Error(err))
+			return pkgerrors.ErrInternalServer
+		}
 
-	if err := s.walletRepo.Create(ctx, &entity.Wallet{
-		UserID:    user.ID,
-		OwnerType: entity.WalletOwnerDoctor,
-		Currency:  "NGN",
-		IsActive:  true,
-	}); err != nil {
-		logger.Error("failed to create wallet during doctor registration", zap.String("email", email), zap.Error(err))
-		return nil, pkgerrors.ErrInternalServer
+		if err := s.walletRepo.Create(txCtx, &entity.Wallet{
+			UserID:    user.ID,
+			OwnerType: entity.WalletOwnerDoctor,
+			Currency:  "NGN",
+			IsActive:  true,
+		}); err != nil {
+			logger.Error("failed to create wallet during doctor registration", zap.String("email", email), zap.Error(err))
+			return pkgerrors.ErrInternalServer
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	logger.Info("doctor registered successfully", zap.String("email", email), zap.Uint("user_id", user.ID))

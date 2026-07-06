@@ -51,8 +51,9 @@ func newAuthRouter(t *testing.T) *gin.Engine {
 	patientRepo := repo.NewGORMPatientRepository(db)
 	doctorRepo  := repo.NewGORMDoctorRepository(db)
 	walletRepo  := repo.NewGORMWalletRepository(db)
+	txer       := repo.NewGORMTransactor(db)
 
-	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	authSvc := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager, txer)
 	authHandler := handler.NewAuthHandler(authSvc)
 
 	r := gin.New()

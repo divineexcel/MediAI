@@ -47,7 +47,7 @@ func NewContainer(db *gorm.DB, cfg *config.Config, jwtManager *pkgjwt.Manager) *
 	smsClient      := smsclient.NewClient(cfg.SMS.APIKey, cfg.SMS.Username, cfg.SMS.SenderID, cfg.SMS.GatewayURL)
 
 	// ─── SERVICES ────────────────────────────────────────────────────────────
-	authSvc    := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager)
+	authSvc    := service.NewAuthService(userRepo, patientRepo, doctorRepo, walletRepo, jwtManager, txer)
 	notifSvc   := service.NewNotificationService(notifRepo)
 	patientSvc := service.NewPatientService(patientRepo, userRepo, walletRepo, notifRepo)
 	doctorSvc  := service.NewDoctorService(doctorRepo, userRepo, walletRepo, notifRepo, apptRepo)

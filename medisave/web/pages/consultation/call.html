@@ -622,6 +622,133 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       display: none;
     }
+
+    /* ─── MOBILE: side panels stop above controls ─── */
+    @media (max-width: 1023px) {
+      .side-panel.open {
+        height: calc(100% - 120px);
+        bottom: auto;
+      }
+      #end-bar {
+        z-index: 101;
+      }
+    }
+
+    /* ─── DESKTOP (≥1024px): side-by-side video + chat ─── */
+    @media (min-width: 1024px) {
+      #app-container {
+        flex-direction: row;
+      }
+
+      #call-screen {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .side-panel {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        width: 380px;
+        max-width: 380px;
+        transform: none;
+        display: none;
+        border-left: 1px solid var(--border-glass);
+        box-shadow: none;
+        z-index: auto;
+        flex-shrink: 0;
+        height: 100%;
+        border-top: none;
+      }
+
+      .side-panel.open {
+        display: flex;
+        transform: none;
+      }
+
+      #local-video-container {
+        width: 200px;
+        height: 260px;
+        top: 90px;
+        right: 24px;
+      }
+
+      #end-bar {
+        height: 120px;
+      }
+
+      .btn-circle {
+        width: 60px;
+        height: 60px;
+      }
+
+      .btn-end {
+        width: 72px;
+        height: 72px;
+      }
+
+      .control-group {
+        gap: 20px;
+      }
+
+      .pulsing-avatar {
+        width: 160px;
+        height: 160px;
+        font-size: 3rem;
+      }
+    }
+
+    /* ─── LANDSCAPE MOBILE ─── */
+    @media (max-width: 1023px) and (orientation: landscape) {
+      #end-bar {
+        height: 80px;
+        padding-bottom: 4px;
+      }
+
+      .btn-circle {
+        width: 40px;
+        height: 40px;
+      }
+
+      .btn-end {
+        width: 48px;
+        height: 48px;
+      }
+
+      .control-group {
+        gap: 10px;
+      }
+
+      #local-video-container {
+        width: 80px;
+        height: 60px;
+        top: 56px;
+        right: 10px;
+        border-radius: 10px;
+      }
+
+      .side-panel.open {
+        height: calc(100% - 100px);
+      }
+    }
+
+    /* ─── TABLET (768–1023px): larger controls ─── */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .btn-circle {
+        width: 56px;
+        height: 56px;
+      }
+
+      .btn-end {
+        width: 66px;
+        height: 66px;
+      }
+
+      .control-group {
+        gap: 18px;
+      }
+    }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 </head>
