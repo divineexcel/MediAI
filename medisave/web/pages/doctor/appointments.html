@@ -429,6 +429,8 @@ function doctorApptApp() {
           for (const appt of fresh) {
             if (appt.status === 'in_progress' && !this._knownInProgress[appt.id]) {
               this._knownInProgress[appt.id] = true;
+              // RC1: Skip Alpine overlay if telemedicine.js DOM overlay is already showing
+              if (document.getElementById('tm-incoming-overlay')) continue;
               // Only show overlay if we're NOT already in this call room
               if (!document.hidden) {
                 this.activeCallAppt = appt;

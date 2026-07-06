@@ -1155,9 +1155,14 @@
   let _unreadCount = 0;
   let _lastMsgID = 0;
   let _typingTimeout = null;
+  let _waitingTimeout = null;
+  let _completeDebounce = false;
+  let _reconnectCount = 0;
+  let _declined = false;
 
   // ─── INITIALIZATION ───
   (async function init() {
+    document.body.style.background = 'var(--dark)';
     document.getElementById('call-body').classList.remove('opacity-0');
     if (!_msToken) { location.href = '/login'; return; }
 
@@ -1219,6 +1224,8 @@
       document.getElementById('waiting-screen').style.display = 'none';
       _startAt = Date.now();
       startTimer();
+      showToast('Secure chat consultation started', 'rgba(15,157,88,0.95)');
+      document.getElementById('status-label').textContent = 'Chat consultation in progress';
     }
 
     // 3. Establish Signaling and WebRTC (only for Video / Voice calls)
@@ -1232,6 +1239,25 @@
     // Load initial prescriptions
     loadPrescriptions();
     loadChatHistory();
+
+    // RC6: Handle page close / refresh — clean up resources
+    window.addEventListener('beforeunload', () => {
+      if (_ended) return;
+      if (_localStream) {
+        _localStream.getTracks().forEach(t => t.stop());
+      }
+      if (_pc) { _pc.close(); _pc = null; }
+      if (_ws) { _ws.close(); _ws = null; }
+    });
+
+    // RC2: Auto-dismiss waiting screen if peer doesn't join within 45s
+    startWaitingTimeout();
+
+    // RC5: Check if the appointment status already indicates end
+    checkAppointmentStatus();
+
+    // M2: Update waiting message based on connection phase
+    setWaiting('Waiting for the other participant to join...');
   })();
 
   // ─── MEDIA STREAM SETUP ───
@@ -1251,6 +1277,7 @@
       if (!_camEnabled) {
         document.getElementById('local-avatar-placeholder').style.display = 'flex';
       }
+      setWaiting('Waiting for the other participant to join...');
     } catch (err) {
       console.warn('Failed to obtain camera: falling back to voice only', err);
       _camEnabled = false;
@@ -1259,8 +1286,9 @@
         updateButtonUI('btn-mic', true);
         updateButtonUI('btn-cam', false);
         document.getElementById('local-avatar-placeholder').style.display = 'flex';
+        setWaiting('Waiting for the other participant to join...');
       } catch (e) {
-        showError('Media Acquisition Failed', 'MediSave requires at least microphone access to conduct calls.');
+        showMediaRetry();
       }
     }
   }
@@ -1273,8 +1301,7 @@
     _ws = new WebSocket(wsURL);
 
     _ws.onopen = () => {
-      document.getElementById('connection-badge').className = "badge-status";
-      document.getElementById('connection-badge').textContent = "Secure Hub Active";
+      hideReconnecting();
       
       // If WebRTC mode, send joined signal
       if (_apptType !== 'chat') {
@@ -1293,8 +1320,8 @@
     };
 
     _ws.onclose = () => {
-      document.getElementById('connection-badge').className = "badge-status connecting";
-      document.getElementById('connection-badge').textContent = "Disconnected";
+      _reconnectCount++;
+      showReconnecting();
       // Auto-reconnect after 3s
       if (!_ended) setTimeout(setupWebSocket, 3000);
     };
@@ -1311,9 +1338,16 @@
       case 'joined':
         showToast(`${_peerName} joined the call`);
         playRingSound();
+        clearTimeout(_waitingTimeout);
         // Since we got Joined, we are the initiator (the peer already in the room)
         _isInitiator = true;
         await initiateCall();
+        break;
+
+      case 'peer-joined':
+        // Another peer joined our room — we are NOT the initiator
+        clearTimeout(_waitingTimeout);
+        showToast(`${_peerName} is connecting...`);
         break;
 
       case 'offer':
@@ -1363,8 +1397,18 @@
         playRingSound();
         break;
 
+      case 'peer-left':
+        showToast(`${_peerName} has left the call`, '#EF4444');
+        playRingSound();
+        break;
+
       case 'end-call':
         onCallEnded();
+        break;
+
+      case 'declined':
+      case 'call-declined':
+        showDeclinedState('The other participant declined the call.');
         break;
     }
   }
@@ -1411,12 +1455,20 @@
     };
 
     // Track peer connection states
-    _pc.onconnectionstatechange = () => {
+    _pc.onconnectionstatechange = async () => {
       const state = _pc.connectionState;
       if (state === 'connected') {
         document.getElementById('waiting-screen').style.display = 'none';
-      } else if (state === 'failed' || state === 'disconnected') {
-        showToast('Connection interrupted. Attempting reconnect...', '#EF4444');
+      } else if (state === 'failed') {
+        showToast('Connection lost. Trying to reconnect...', '#EF4444');
+        // RC8: Attempt ICE restart
+        try {
+          await _pc.restartIce();
+        } catch (e) {
+          console.warn('ICE restart failed:', e);
+        }
+      } else if (state === 'disconnected') {
+        showToast('Connection unstable. Please wait...', '#F59E0B');
       }
     };
   }
@@ -1561,6 +1613,10 @@
   }
 
   async function sendChatMessage() {
+    if (_ended) {
+      showToast('The consultation has ended. You cannot send messages.', '#EF4444');
+      return;
+    }
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if (!text) return;
@@ -1580,8 +1636,12 @@
         appendChatBubble(data, true);
         // Relay chat event to peer connection socket
         sendSignal({ type: 'chat-message', payload: data });
+      } else {
+        showToast('Failed to send message. The consultation may have ended.', '#EF4444');
       }
-    } catch (_) {}
+    } catch (_) {
+      showToast('Network error sending message.', '#EF4444');
+    }
   }
 
   function sendTypingIndicator() {
@@ -1739,6 +1799,7 @@
   async function onCallEnded() {
     if (_ended) return;
     _ended = true;
+    clearTimeout(_waitingTimeout);
     
     // Stop timers
     stopTimer();
@@ -1768,7 +1829,9 @@
     document.getElementById('ended-duration').textContent = `Call Duration: ${m}:${s}`;
     document.getElementById('ended-screen').style.display = 'flex';
 
-    // Call REST endpoint to complete appointment
+    // RC3: Debounce — only call PATCH /complete once
+    if (_completeDebounce) return;
+    _completeDebounce = true;
     try {
       await api(`/api/v1/appointments/${_apptID}/complete`, { method: 'PATCH' });
     } catch (_) {}
@@ -1776,6 +1839,75 @@
 
   function goBack() {
     location.href = _role === 'doctor' ? '/doctor/appointments' : '/patient/appointments';
+  }
+
+  // ─── RC2: WAITING ROOM TIMEOUT ───
+  function startWaitingTimeout() {
+    if (_apptType === 'chat') return; // No waiting for chat-only
+    clearTimeout(_waitingTimeout);
+    _waitingTimeout = setTimeout(() => {
+      if (!_ended && !_pc) {
+        showToast('The other participant has not joined. You can wait longer or leave.', '#F59E0B');
+      }
+    }, 45000);
+  }
+
+  // ─── RC5: CHECK APPOINTMENT STATUS ───
+  async function checkAppointmentStatus() {
+    try {
+      const res = await api(`/api/v1/appointments/${_apptID}`);
+      if (res.ok) {
+        const { data } = await res.json();
+        if (data.status === 'completed' || data.status === 'cancelled') {
+          showDeclinedState(data.status === 'cancelled' ? 'This consultation has been cancelled.' : 'This consultation has already ended.');
+        }
+      }
+    } catch (_) {}
+  }
+
+  function showDeclinedState(msg) {
+    _declined = true;
+    clearTimeout(_waitingTimeout);
+    document.getElementById('loading-dots').style.display = 'none';
+    document.getElementById('status-label').style.display = 'none';
+    document.getElementById('error-title').textContent = 'Consultation Ended';
+    document.getElementById('error-body').textContent = msg;
+    document.getElementById('error-box').style.display = 'block';
+    document.getElementById('btn-end').style.opacity = '0.5';
+    document.getElementById('btn-end').onclick = goBack;
+  }
+
+  // ─── U3: RECONNECTION BANNER ───
+  function showReconnecting() {
+    const badge = document.getElementById('connection-badge');
+    badge.className = "badge-status connecting";
+    badge.textContent = "Reconnecting...";
+    if (_reconnectCount > 1) {
+      showToast('Connection lost. Reconnecting...', '#F59E0B');
+    }
+  }
+
+  function hideReconnecting() {
+    const badge = document.getElementById('connection-badge');
+    badge.className = "badge-status";
+    badge.textContent = "Secure Hub Active";
+    _reconnectCount = 0;
+  }
+
+  // ─── U4: MEDIA RETRY ───
+  function showMediaRetry() {
+    const errBox = document.getElementById('error-box');
+    errBox.innerHTML = `
+      <h4 style="color:#EF4444; font-weight:700; margin-bottom:6px;">Microphone Access Needed</h4>
+      <p style="font-size:0.8rem; color:#9CA3AF; line-height:1.4; margin-bottom:14px;">
+        MediSave needs microphone access to conduct calls. Please allow microphone access in your browser settings and try again.
+      </p>
+      <button onclick="location.reload()" style="padding:10px 20px; background:var(--primary); color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer; margin-right:8px;">Retry</button>
+      <button onclick="goBack()" style="padding:10px 20px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid var(--border-glass); border-radius:8px; font-weight:600; cursor:pointer;">Go Back</button>
+    `;
+    errBox.style.display = 'block';
+    document.getElementById('loading-dots').style.display = 'none';
+    document.getElementById('status-label').style.display = 'none';
   }
 
   // ─── UTILITIES & SOUNDS ───
