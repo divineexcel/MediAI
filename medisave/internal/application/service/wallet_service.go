@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/medisave/app/internal/application/dto"
 	"github.com/medisave/app/internal/domain/entity"
 	"github.com/medisave/app/internal/domain/repository"
 	"github.com/medisave/app/internal/infrastructure/paystack"
 	pkgerrors "github.com/medisave/app/pkg/errors"
+	"github.com/medisave/app/pkg/logger"
 	"github.com/medisave/app/pkg/pagination"
 	"github.com/medisave/app/pkg/utils"
 )
@@ -84,9 +87,11 @@ func (s *walletService) GetTransaction(ctx context.Context, userID uint, txID ui
 func (s *walletService) InitializeDeposit(ctx context.Context, userID uint, email string, req *dto.DepositInitRequest) (*dto.DepositInitResponse, error) {
 	wallet, err := s.walletRepo.FindByUserID(ctx, userID)
 	if err != nil {
+		logger.Error("deposit initialization failed: wallet lookup error", zap.Uint("user_id", userID), zap.Error(err))
 		return nil, err
 	}
 	if !wallet.IsActive {
+		logger.Warn("deposit initialization failed: wallet inactive", zap.Uint("user_id", userID), zap.Uint("wallet_id", wallet.ID))
 		return nil, pkgerrors.ErrWalletInactive
 	}
 
@@ -105,6 +110,7 @@ func (s *walletService) InitializeDeposit(ctx context.Context, userID uint, emai
 			Reference: reference,
 		})
 		if err != nil {
+			logger.Error("deposit initialization failed: gateway error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 			return nil, fmt.Errorf("payment gateway error: %w", err)
 		}
 		authURL = data.AuthorizationURL
@@ -125,9 +131,15 @@ func (s *walletService) InitializeDeposit(ctx context.Context, userID uint, emai
 		PaystackRef:   reference,
 	}
 	if err := s.txRepo.Create(ctx, tx); err != nil {
+		logger.Error("deposit initialization failed: transaction write error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
+	logger.Info("deposit initialized successfully",
+		zap.Uint("wallet_id", wallet.ID),
+		zap.String("ref", reference),
+		zap.Float64("amount", req.Amount),
+	)
 	return &dto.DepositInitResponse{
 		AuthorizationURL: authURL,
 		AccessCode:       accessCode,
@@ -138,15 +150,18 @@ func (s *walletService) InitializeDeposit(ctx context.Context, userID uint, emai
 func (s *walletService) VerifyDeposit(ctx context.Context, userID uint, reference string) (*entity.Transaction, error) {
 	wallet, err := s.walletRepo.FindByUserID(ctx, userID)
 	if err != nil {
+		logger.Error("deposit verification failed: wallet lookup error", zap.Uint("user_id", userID), zap.Error(err))
 		return nil, err
 	}
 
 	// Check the pending transaction exists and belongs to this wallet
 	tx, err := s.txRepo.FindByReference(ctx, reference)
 	if err != nil {
+		logger.Warn("deposit verification failed: transaction ref not found", zap.Uint("wallet_id", wallet.ID), zap.String("ref", reference))
 		return nil, pkgerrors.ErrNotFound
 	}
 	if tx.WalletID != wallet.ID {
+		logger.Warn("deposit verification failed: wallet ownership mismatch", zap.Uint("wallet_id", wallet.ID), zap.Uint("tx_wallet_id", tx.WalletID))
 		return nil, pkgerrors.ErrAccessDenied
 	}
 	if tx.Status == entity.TxStatusSuccess {
@@ -160,10 +175,12 @@ func (s *walletService) VerifyDeposit(ctx context.Context, userID uint, referenc
 	} else {
 		data, err := s.paystack.VerifyTransaction(reference)
 		if err != nil {
+			logger.Error("deposit verification failed: gateway verification error", zap.String("ref", reference), zap.Error(err))
 			return nil, fmt.Errorf("payment gateway error: %w", err)
 		}
 
 		if data.Status != "success" {
+			logger.Warn("deposit verification failed: gateway status not success", zap.String("ref", reference), zap.String("status", data.Status))
 			_ = s.txRepo.UpdateStatus(ctx, tx.ID, entity.TxStatusFailed)
 			return nil, fmt.Errorf("payment %s", data.Status)
 		}
@@ -172,12 +189,14 @@ func (s *walletService) VerifyDeposit(ctx context.Context, userID uint, referenc
 
 	// Credit wallet
 	if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, amountNGN); err != nil {
+		logger.Error("deposit verification failed: wallet credit error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
 	// Re-fetch wallet to get current balance after update
 	wallet, err = s.walletRepo.FindByID(ctx, wallet.ID)
 	if err != nil {
+		logger.Error("deposit verification failed: wallet reload error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
@@ -186,9 +205,16 @@ func (s *walletService) VerifyDeposit(ctx context.Context, userID uint, referenc
 	tx.Amount = amountNGN
 	tx.BalanceAfter = wallet.Balance
 	if err := s.txRepo.Update(ctx, tx); err != nil {
+		logger.Error("deposit verification failed: transaction status update error", zap.String("ref", reference), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
+	logger.Info("deposit verified and credited successfully",
+		zap.Uint("wallet_id", wallet.ID),
+		zap.String("ref", reference),
+		zap.Float64("amount", amountNGN),
+		zap.Float64("new_balance", wallet.Balance),
+	)
 	return tx, nil
 }
 
@@ -264,12 +290,19 @@ func (s *walletService) ProcessWebhook(ctx context.Context, body []byte, signatu
 func (s *walletService) Withdraw(ctx context.Context, userID uint, req *dto.WithdrawRequest) (*entity.Transaction, error) {
 	wallet, err := s.walletRepo.FindByUserID(ctx, userID)
 	if err != nil {
+		logger.Error("withdrawal failed: wallet lookup error", zap.Uint("user_id", userID), zap.Error(err))
 		return nil, err
 	}
 	if !wallet.IsActive {
+		logger.Warn("withdrawal failed: wallet inactive", zap.Uint("wallet_id", wallet.ID))
 		return nil, pkgerrors.ErrWalletInactive
 	}
 	if wallet.Balance < req.Amount {
+		logger.Warn("withdrawal failed: insufficient balance",
+			zap.Uint("wallet_id", wallet.ID),
+			zap.Float64("balance", wallet.Balance),
+			zap.Float64("requested", req.Amount),
+		)
 		return nil, pkgerrors.ErrInsufficientFunds
 	}
 
@@ -286,11 +319,13 @@ func (s *walletService) Withdraw(ctx context.Context, userID uint, req *dto.With
 		// Create transfer recipient on Paystack
 		recipientCode, err := s.paystack.CreateTransferRecipient(req.AccountName, req.AccountNo, req.BankCode)
 		if err != nil {
+			logger.Error("withdrawal failed: recipient creation error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 			return nil, fmt.Errorf("payment gateway error: %w", err)
 		}
 
 		// Debit wallet optimistically (refunded on transfer.reversed webhook)
 		if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, -req.Amount); err != nil {
+			logger.Error("withdrawal failed: wallet debit error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 			return nil, pkgerrors.ErrInternalServer
 		}
 
@@ -305,20 +340,30 @@ func (s *walletService) Withdraw(ctx context.Context, userID uint, req *dto.With
 			Description:   narration,
 		}
 		if err := s.txRepo.Create(ctx, tx); err != nil {
+			logger.Error("withdrawal failed: transaction write error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 			return nil, pkgerrors.ErrInternalServer
 		}
 
 		// Initiate Paystack transfer (async — result comes via webhook)
 		amountKobo := int64(req.Amount * 100)
 		go func() {
-			_ = s.paystack.InitiateTransfer(amountKobo, recipientCode, reference, narration)
+			err := s.paystack.InitiateTransfer(amountKobo, recipientCode, reference, narration)
+			if err != nil {
+				logger.Error("withdrawal background transfer initiation failed", zap.String("ref", reference), zap.Error(err))
+			}
 		}()
 
+		logger.Info("withdrawal initiated (pending callback)",
+			zap.Uint("wallet_id", wallet.ID),
+			zap.String("ref", reference),
+			zap.Float64("amount", req.Amount),
+		)
 		return tx, nil
 	}
 
 	// ─── Dev/Dummy mode: debit wallet and mark success immediately ─
 	if err := s.walletRepo.UpdateBalance(ctx, wallet.ID, -req.Amount); err != nil {
+		logger.Error("withdrawal failed: dummy mode wallet debit error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
@@ -333,9 +378,15 @@ func (s *walletService) Withdraw(ctx context.Context, userID uint, req *dto.With
 		Description:   narration + " (demo)",
 	}
 	if err := s.txRepo.Create(ctx, tx); err != nil {
+		logger.Error("withdrawal failed: dummy mode transaction write error", zap.Uint("wallet_id", wallet.ID), zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
+	logger.Info("withdrawal processed immediately in dummy mode",
+		zap.Uint("wallet_id", wallet.ID),
+		zap.String("ref", reference),
+		zap.Float64("amount", req.Amount),
+	)
 	return tx, nil
 }
 

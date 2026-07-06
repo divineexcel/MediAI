@@ -170,7 +170,7 @@ func (r *GORMTransactionRepository) TotalVolume(ctx context.Context) (float64, e
 	var total float64
 	err := r.dbc(ctx).
 		Model(&entity.Transaction{}).
-		Where("status = 'completed' AND type IN ('deposit','appointment_payment')").
+		Where("status = ? AND type IN ?", entity.TxStatusSuccess, []string{string(entity.TxTypeDeposit), string(entity.TxTypePayment)}).
 		Select("COALESCE(SUM(amount), 0)").
 		Scan(&total).Error
 	return total, err

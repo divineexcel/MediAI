@@ -40,14 +40,22 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		Logger: gormlogger.Default.LogMode(logLevel),
 	})
 	if err != nil {
+		logger.Error("failed to open database connection", zap.String("path", cfg.Path), zap.Error(err))
 		return nil, err
 	}
 
 	sqlDB, err := db.DB()
-	if err == nil {
-		sqlDB.SetMaxOpenConns(1)
-		sqlDB.SetMaxIdleConns(1)
+	if err != nil {
+		logger.Error("failed to retrieve database handle", zap.Error(err))
+		return nil, err
 	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+	sqlDB.SetConnMaxLifetime(0)
+	logger.Info("configured SQLite connection pool",
+		zap.Int("max_open_conns", 1),
+		zap.Int("max_idle_conns", 1),
+	)
 
 	// Each PRAGMA is critical for correctness and performance.
 	// Log a warning on failure rather than silently continuing.
@@ -77,7 +85,7 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 		}
 	}
 
-	logger.Info("database connected",
+	logger.Info("database connected successfully",
 		zap.String("driver", "sqlite"),
 		zap.String("path", cfg.Path),
 	)
@@ -86,5 +94,11 @@ func Connect(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 }
 
 func Migrate(db *gorm.DB) error {
-	return migrations.Run(db)
+	logger.Info("starting database migrations")
+	if err := migrations.Run(db); err != nil {
+		logger.Error("database migrations failed", zap.Error(err))
+		return err
+	}
+	logger.Info("database migrations completed successfully")
+	return nil
 }

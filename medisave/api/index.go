@@ -30,10 +30,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 		logger.Info("starting MediSave on Vercel")
 
-		// In Vercel, the only writable directory is /tmp.
-		// If DB_DRIVER is sqlite, map the path to /tmp/medisave.db to avoid read-only filesystem errors.
+		// In actual Vercel cloud hosting, the only writable directory is /tmp.
+		// If DB_DRIVER is sqlite and running on Vercel Cloud (where VERCEL=1 and NOW_REGION is set),
+		// map the path to /tmp/medisave.db. For local vercel dev, keep using the persistent local path.
 		if (cfg.Database.Driver == "sqlite" || cfg.Database.Driver == "") && os.Getenv("VERCEL") == "1" {
-			cfg.Database.Path = "/tmp/medisave.db"
+			if os.Getenv("NOW_REGION") != "" {
+				cfg.Database.Path = "/tmp/medisave.db"
+				logger.Warn("detected Vercel Cloud deployment — overriding SQLite path to ephemeral /tmp/medisave.db due to read-only filesystem restrictions", zap.String("path", cfg.Database.Path))
+			} else {
+				logger.Info("detected Vercel local dev environment — preserving persistent SQLite path", zap.String("path", cfg.Database.Path))
+			}
 		}
 
 		// Connect database

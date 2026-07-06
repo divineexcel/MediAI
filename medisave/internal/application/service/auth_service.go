@@ -61,17 +61,17 @@ func (s *authService) RegisterPatient(ctx context.Context, req *dto.RegisterRequ
 	logger.Info("registering patient", zap.String("email", email))
 
 	if exists, _ := s.userRepo.ExistsByEmail(ctx, email); exists {
-		logger.Warn("patient registration failed: email already exists", zap.String("email", email))
+		logger.Warn("patient registration failed: email already registered", zap.String("email", email))
 		return nil, pkgerrors.ErrEmailExists
 	}
 	if exists, _ := s.userRepo.ExistsByPhone(ctx, req.Phone); exists {
-		logger.Warn("patient registration failed: phone already exists", zap.String("phone", req.Phone))
+		logger.Warn("patient registration failed: phone already registered", zap.String("phone", req.Phone))
 		return nil, pkgerrors.ErrPhoneExists
 	}
 
 	hashedPw, err := hash.Password(req.Password)
 	if err != nil {
-		logger.Error("failed to hash password for patient registration", zap.Error(err))
+		logger.Error("patient registration failed: password hashing error", zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
@@ -89,13 +89,13 @@ func (s *authService) RegisterPatient(ctx context.Context, req *dto.RegisterRequ
 			IsActive:     true,
 		}
 		if err := s.userRepo.Create(txCtx, user); err != nil {
-			logger.Error("failed to create user during patient registration", zap.String("email", email), zap.Error(err))
+			logger.Error("patient registration failed: database user write failure", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
 		patient := &entity.Patient{UserID: user.ID}
 		if err := s.patientRepo.Create(txCtx, patient); err != nil {
-			logger.Error("failed to create patient record during registration", zap.String("email", email), zap.Error(err))
+			logger.Error("patient registration failed: database patient write failure", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -105,7 +105,7 @@ func (s *authService) RegisterPatient(ctx context.Context, req *dto.RegisterRequ
 			Currency:  "NGN",
 			IsActive:  true,
 		}); err != nil {
-			logger.Error("failed to create wallet during patient registration", zap.String("email", email), zap.Error(err))
+			logger.Error("patient registration failed: database wallet write failure", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -126,23 +126,23 @@ func (s *authService) RegisterDoctor(ctx context.Context, req *dto.DoctorRegiste
 	logger.Info("registering doctor", zap.String("email", email), zap.String("license", req.LicenseNumber))
 
 	if exists, _ := s.userRepo.ExistsByEmail(ctx, email); exists {
-		logger.Warn("doctor registration failed: email already exists", zap.String("email", email))
+		logger.Warn("doctor registration failed: email already registered", zap.String("email", email))
 		return nil, pkgerrors.ErrEmailExists
 	}
 	if exists, _ := s.userRepo.ExistsByPhone(ctx, req.Phone); exists {
-		logger.Warn("doctor registration failed: phone already exists", zap.String("phone", req.Phone))
+		logger.Warn("doctor registration failed: phone already registered", zap.String("phone", req.Phone))
 		return nil, pkgerrors.ErrPhoneExists
 	}
 
 	// Check license number uniqueness
 	if _, err := s.doctorRepo.FindByLicenseNumber(ctx, req.LicenseNumber); err == nil {
-		logger.Warn("doctor registration failed: license already exists", zap.String("license", req.LicenseNumber))
+		logger.Warn("doctor registration failed: license already registered", zap.String("license", req.LicenseNumber))
 		return nil, pkgerrors.ErrLicenseExists
 	}
 
 	hashedPw, err := hash.Password(req.Password)
 	if err != nil {
-		logger.Error("failed to hash password for doctor registration", zap.Error(err))
+		logger.Error("doctor registration failed: password hashing error", zap.Error(err))
 		return nil, pkgerrors.ErrInternalServer
 	}
 
@@ -160,7 +160,7 @@ func (s *authService) RegisterDoctor(ctx context.Context, req *dto.DoctorRegiste
 			IsActive:     true,
 		}
 		if err := s.userRepo.Create(txCtx, user); err != nil {
-			logger.Error("failed to create user during doctor registration", zap.String("email", email), zap.Error(err))
+			logger.Error("doctor registration failed: database user write failure", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -177,7 +177,7 @@ func (s *authService) RegisterDoctor(ctx context.Context, req *dto.DoctorRegiste
 			IsAvailable:       false,
 		}
 		if err := s.doctorRepo.Create(txCtx, doctor); err != nil {
-			logger.Error("failed to create doctor record during registration", zap.String("email", email), zap.Error(err))
+			logger.Error("doctor registration failed: database doctor write failure", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -187,7 +187,7 @@ func (s *authService) RegisterDoctor(ctx context.Context, req *dto.DoctorRegiste
 			Currency:  "NGN",
 			IsActive:  true,
 		}); err != nil {
-			logger.Error("failed to create wallet during doctor registration", zap.String("email", email), zap.Error(err))
+			logger.Error("doctor registration failed: database wallet write failure", zap.Error(err))
 			return pkgerrors.ErrInternalServer
 		}
 
@@ -205,25 +205,23 @@ func (s *authService) RegisterDoctor(ctx context.Context, req *dto.DoctorRegiste
 
 func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.AuthResponse, error) {
 	email := utils.NormEmail(req.Email)
-	logger.Info("attempting login", zap.String("email", email))
-
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		logger.Warn("login failed: user not found", zap.String("email", email))
+		logger.Warn("login failed: user email not found", zap.String("email", email))
 		return nil, pkgerrors.ErrInvalidCredentials
 	}
 
 	if !user.IsActive {
-		logger.Warn("login failed: account inactive", zap.String("email", email), zap.Uint("user_id", user.ID))
+		logger.Warn("login failed: account deactivated", zap.String("email", email), zap.Uint("user_id", user.ID))
 		return nil, pkgerrors.ErrAccountInactive
 	}
 
 	if !hash.CheckPassword(req.Password, user.PasswordHash) {
-		logger.Warn("login failed: incorrect password", zap.String("email", email), zap.Uint("user_id", user.ID))
+		logger.Warn("login failed: password mismatch", zap.String("email", email), zap.Uint("user_id", user.ID))
 		return nil, pkgerrors.ErrInvalidCredentials
 	}
 
-	logger.Info("login successful", zap.String("email", email), zap.Uint("user_id", user.ID))
+	logger.Info("user logged in successfully", zap.String("email", email), zap.Uint("user_id", user.ID), zap.String("role", string(user.Role)))
 	return s.buildAuthResponse(user)
 }
 
